@@ -111,7 +111,17 @@
         layout:{background:{color:"#020617"}, textColor:"#cbd5f5"},
         grid:{vertLines:{color:"#111827"}, horzLines:{color:"#111827"}}
       });
-      series = chart.addCandlestickSeries();
+
+      // NEW v4+ API
+      series = chart.addSeries({
+        type: 'Candlestick',
+        upColor: '#22c55e',
+        downColor: '#ef4444',
+        borderUpColor: '#22c55e',
+        borderDownColor: '#ef4444',
+        wickUpColor: '#22c55e',
+        wickDownColor: '#ef4444',
+      });
     }
 
     async function drawChart(ticker){
