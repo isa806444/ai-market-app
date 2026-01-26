@@ -4,179 +4,149 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AI Market Scanner</title>
-
-  <!-- App Meta -->
-  <meta name="theme-color" content="#0f172a" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-
-  <!-- Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
-
   <style>
-    * { box-sizing: border-box; }
     body {
       margin: 0;
-      font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-      background: linear-gradient(180deg, #0f172a, #020617);
-      color: #e5e7eb;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: radial-gradient(circle at top, #0b1b33, #020617);
+      color: white;
       min-height: 100vh;
-      display: flex;
-      flex-direction: column;
+      padding: 20px;
     }
 
-    header {
-      padding: 20px 16px 12px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+    h1 {
+      margin: 0 0 20px 0;
+      font-size: 28px;
     }
 
-    header h1 {
-      font-size: 20px;
-      font-weight: 700;
-      letter-spacing: 0.3px;
-      margin: 0;
-    }
-
-    header .status {
-      font-size: 12px;
+    .live {
       color: #22c55e;
+      font-size: 14px;
+      margin-left: 8px;
+    }
+
+    .search-box {
       display: flex;
-      align-items: center;
-      gap: 6px;
+      gap: 10px;
+      margin-bottom: 20px;
     }
 
-    header .dot {
-      width: 8px;
-      height: 8px;
-      background: #22c55e;
-      border-radius: 50%;
-      box-shadow: 0 0 0 4px rgba(34,197,94,0.15);
-    }
-
-    main {
+    input {
       flex: 1;
-      padding: 12px 16px 24px;
+      padding: 14px;
+      border-radius: 12px;
+      border: none;
+      font-size: 16px;
+      outline: none;
+    }
+
+    button {
+      padding: 14px 18px;
+      border-radius: 12px;
+      border: none;
+      font-size: 16px;
+      background: linear-gradient(90deg, #3b82f6, #22c55e);
+      color: white;
+      cursor: pointer;
     }
 
     .card {
-      background: rgba(15, 23, 42, 0.9);
-      border: 1px solid rgba(148,163,184,0.15);
-      border-radius: 16px;
-      padding: 16px;
-      margin-bottom: 12px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
-    }
-
-    .card-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 8px;
+      background: rgba(15, 23, 42, 0.7);
+      border-radius: 20px;
+      padding: 20px;
+      margin-top: 12px;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.05);
     }
 
     .ticker {
-      font-size: 18px;
-      font-weight: 700;
+      font-size: 22px;
+      font-weight: bold;
     }
 
     .price {
-      font-size: 16px;
+      float: right;
       color: #93c5fd;
     }
 
     .signal {
+      margin-top: 8px;
       display: inline-block;
-      margin-top: 6px;
-      padding: 4px 10px;
+      padding: 6px 12px;
       border-radius: 999px;
-      font-size: 12px;
-      font-weight: 600;
-      letter-spacing: 0.3px;
+      font-size: 14px;
     }
 
-    .Bullish { background: rgba(34,197,94,0.15); color: #22c55e; }
-    .Momentum { background: rgba(59,130,246,0.15); color: #60a5fa; }
-    .Breakout { background: rgba(234,179,8,0.15); color: #facc15; }
+    .Bullish { background: rgba(34,197,94,0.2); color: #22c55e; }
+    .Momentum { background: rgba(59,130,246,0.2); color: #3b82f6; }
+    .Breakout { background: rgba(234,179,8,0.25); color: #eab308; }
+    .Weak { background: rgba(148,163,184,0.2); color: #94a3b8; }
 
-    .loading {
+    .summary {
+      margin-top: 12px;
+      color: #cbd5f5;
+      line-height: 1.4;
+    }
+
+    .status {
+      margin-top: 30px;
+      opacity: 0.7;
       text-align: center;
-      color: #94a3b8;
-      margin-top: 40px;
-    }
-
-    footer {
-      padding: 12px 16px 20px;
-    }
-
-    button {
-      width: 100%;
-      padding: 14px;
-      border-radius: 12px;
-      border: none;
-      background: linear-gradient(135deg, #2563eb, #22c55e);
-      color: white;
-      font-size: 15px;
-      font-weight: 700;
-      letter-spacing: 0.3px;
-      cursor: pointer;
-    }
-
-    button:active {
-      transform: scale(0.98);
     }
   </style>
 </head>
 <body>
-  <header>
-    <h1>AI Market Scanner</h1>
-    <div class="status"><span class="dot"></span> Live</div>
-  </header>
+  <h1>AI Market Scanner <span class="live">● Live</span></h1>
 
-  <main id="content">
-    <div class="loading" id="loading">Scanning markets…</div>
-  </main>
+  <div class="search-box">
+    <input id="tickerInput" placeholder="Enter any ticker (e.g. TSLA, NVDA, BITF)" />
+    <button onclick="analyze()">Analyze</button>
+  </div>
 
-  <footer>
-    <button onclick="loadScan()">Refresh Scan</button>
-  </footer>
+  <div id="result"></div>
+  <div class="status" id="status"></div>
 
   <script>
-    const API = "https://ai-market-backend.onrender.com/scan";
+    const API = "https://ai-market-backend.onrender.com/analyze";
 
-    async function loadScan() {
-      const content = document.getElementById("content");
-      const loading = document.getElementById("loading");
-      content.innerHTML = '<div class="loading">Scanning markets…</div>';
+    async function analyze() {
+      const ticker = document.getElementById("tickerInput").value.trim();
+      if (!ticker) return;
+
+      const result = document.getElementById("result");
+      const status = document.getElementById("status");
+
+      status.textContent = "Analyzing...";
+      result.innerHTML = "";
 
       try {
-        const res = await fetch(API);
+        const res = await fetch(`${API}?ticker=${ticker}`);
         const data = await res.json();
 
-        content.innerHTML = "";
-        data.results.forEach(item => {
-          const card = document.createElement("div");
-          card.className = "card";
+        if (data.error) {
+          status.textContent = data.error;
+          return;
+        }
 
-          card.innerHTML = `
-            <div class="card-header">
-              <div class="ticker">${item.ticker}</div>
-              <div class="price">$${item.price}</div>
+        result.innerHTML = `
+          <div class="card">
+            <div class="ticker">
+              ${data.ticker}
+              <span class="price">$${data.price}</span>
             </div>
-            <div class="signal ${item.signal}">${item.signal}</div>
-          `;
+            <div class="signal ${data.signal}">
+              ${data.signal} (${data.change}%)
+            </div>
+            <div class="summary">
+              ${data.summary}
+            </div>
+          </div>
+        `;
 
-          content.appendChild(card);
-        });
+        status.textContent = "";
       } catch (e) {
-        content.innerHTML = '<div class="loading">Failed to load scan.</div>';
+        status.textContent = "Failed to load analysis.";
       }
     }
-
-    loadScan();
   </script>
 </body>
 </html>
