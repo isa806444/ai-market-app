@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AI Trading Terminal</title>
+  <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
   <style>
     body {
       margin: 0;
@@ -14,127 +15,33 @@
       padding: 20px;
     }
 
-    h1 {
-      margin: 0 0 12px 0;
-      font-size: 28px;
-    }
-
-    .live {
-      color: #22c55e;
-      font-size: 14px;
-      margin-left: 8px;
-    }
-
+    h1 { margin: 0 0 12px 0; font-size: 28px; }
+    .live { color:#22c55e; font-size:14px; margin-left:8px; }
     .row { display:flex; gap:10px; }
+    .search-box { display:flex; gap:10px; margin-bottom:12px; }
+    input { flex:1; padding:14px; border-radius:12px; border:none; font-size:16px; }
+    button { padding:14px 18px; border-radius:12px; border:none; font-size:16px; background:linear-gradient(90deg,#3b82f6,#22c55e); color:white; cursor:pointer; }
+    .mode button { flex:1; background:#0f172a; color:#cbd5f5; border:1px solid rgba(255,255,255,0.1); }
+    .mode .active { background:linear-gradient(90deg,#3b82f6,#22c55e); color:white; border:none; }
 
-    .search-box {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 12px;
-    }
+    .card { background:rgba(15,23,42,.7); border-radius:20px; padding:16px; margin-top:12px; box-shadow:0 0 0 1px rgba(255,255,255,.05); }
+    .ticker { font-size:22px; font-weight:bold; }
+    .price { float:right; color:#93c5fd; }
 
-    input {
-      flex: 1;
-      padding: 14px;
-      border-radius: 12px;
-      border: none;
-      font-size: 16px;
-      outline: none;
-    }
+    .signal { margin-top:8px; display:inline-block; padding:6px 12px; border-radius:999px; font-size:14px; }
+    .Bullish, .Momentum, .Breakout, .Momentum\ Breakout { background:rgba(34,197,94,.2); color:#22c55e; }
+    .Bearish, .Weak, .Fade\ Risk { background:rgba(239,68,68,.2); color:#ef4444; }
+    .Neutral, .Chop\ Zone, .Base\ Building { background:rgba(148,163,184,.2); color:#cbd5f5; }
 
-    button {
-      padding: 14px 18px;
-      border-radius: 12px;
-      border: none;
-      font-size: 16px;
-      background: linear-gradient(90deg, #3b82f6, #22c55e);
-      color: white;
-      cursor: pointer;
-    }
+    .summary { margin-top:12px; color:#cbd5f5; line-height:1.4; }
+    .movers { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+    .pill { padding:6px 10px; border-radius:999px; border:1px solid rgba(255,255,255,.15); cursor:pointer; font-size:13px; }
+    .up{color:#22c55e;} .down{color:#ef4444;}
+    .status { margin-top:20px; opacity:.7; text-align:center; }
 
-    .mode button {
-      flex:1;
-      background:#0f172a;
-      color:#cbd5f5;
-      border:1px solid rgba(255,255,255,0.1);
-    }
-
-    .mode .active {
-      background: linear-gradient(90deg, #3b82f6, #22c55e);
-      color:white;
-      border:none;
-    }
-
-    .card {
-      background: rgba(15, 23, 42, 0.7);
-      border-radius: 20px;
-      padding: 16px;
-      margin-top: 12px;
-      box-shadow: 0 0 0 1px rgba(255,255,255,0.05);
-    }
-
-    .ticker {
-      font-size: 22px;
-      font-weight: bold;
-    }
-
-    .price {
-      float: right;
-      color: #93c5fd;
-    }
-
-    .signal {
-      margin-top: 8px;
-      display: inline-block;
-      padding: 6px 12px;
-      border-radius: 999px;
-      font-size: 14px;
-    }
-
-    .Bullish, .Momentum, .Breakout, .Momentum\ Breakout {
-      background: rgba(34,197,94,0.2);
-      color: #22c55e;
-    }
-
-    .Bearish, .Weak, .Fade\ Risk {
-      background: rgba(239,68,68,0.2);
-      color: #ef4444;
-    }
-
-    .Neutral, .Chop\ Zone, .Base\ Building {
-      background: rgba(148,163,184,0.2);
-      color: #cbd5f5;
-    }
-
-    .summary {
-      margin-top: 12px;
-      color: #cbd5f5;
-      line-height: 1.4;
-    }
-
-    .movers {
-      display:flex;
-      flex-wrap:wrap;
-      gap:8px;
-      margin-top:8px;
-    }
-
-    .pill {
-      padding:6px 10px;
-      border-radius:999px;
-      border:1px solid rgba(255,255,255,0.15);
-      cursor:pointer;
-      font-size:13px;
-    }
-
-    .up { color:#22c55e; }
-    .down { color:#ef4444; }
-
-    .status {
-      margin-top: 20px;
-      opacity: 0.7;
-      text-align: center;
-    }
+    #chart { height:260px; }
+    .tf button { flex:1; background:#020617; color:#cbd5f5; border:1px solid rgba(255,255,255,.1); }
+    .tf .active { background:#38bdf8; color:#020617; border:none; }
   </style>
 </head>
 <body>
@@ -145,11 +52,18 @@
     <button onclick="analyze()">Analyze</button>
   </div>
 
-  <div class="row mode" style="margin-bottom:10px;">
+  <div class="row mode" style="margin-bottom:8px;">
     <button id="dayBtn" class="active" onclick="setMode('day')">Day</button>
     <button id="swingBtn" onclick="setMode('swing')">Swing</button>
   </div>
 
+  <div class="row tf" style="margin-bottom:8px;">
+    <button id="tf1d" class="active" onclick="setTF('1D')">1D</button>
+    <button id="tf5d" onclick="setTF('5D')">5D</button>
+    <button id="tf1m" onclick="setTF('1M')">1M</button>
+  </div>
+
+  <div id="chart" class="card"></div>
   <div id="result"></div>
 
   <div class="card">
@@ -162,69 +76,86 @@
   <script>
     const API = "https://ai-market-backend.onrender.com";
     let mode = "day";
+    let tf = "1D";
+    let chart, series;
 
     function setMode(m){
       mode = m;
       dayBtn.classList.toggle("active", m==="day");
       swingBtn.classList.toggle("active", m==="swing");
     }
+    function setTF(t){
+      tf = t;
+      ["1D","5D","1M"].forEach(x=>{
+        document.getElementById("tf"+x.toLowerCase()).classList.toggle("active", x===t);
+      });
+      if(lastTicker) drawChart(lastTicker);
+    }
 
-    async function analyze(sym) {
-      const ticker = sym || document.getElementById("tickerInput").value.trim();
-      if (!ticker) return;
+    function initChart(){
+      chart = LightweightCharts.createChart(document.getElementById("chart"), {
+        layout:{background:{color:"#020617"}, textColor:"#cbd5f5"},
+        grid:{vertLines:{color:"#111827"}, horzLines:{color:"#111827"}},
+        height:260
+      });
+      series = chart.addCandlestickSeries();
+    }
 
-      const result = document.getElementById("result");
-      const status = document.getElementById("status");
+    let lastTicker = "";
+
+    async function drawChart(ticker){
+      const r = await fetch(`${API}/chart?ticker=${ticker}&tf=${tf}`);
+      const data = await r.json();
+      series.setData(data);
+      chart.timeScale().fitContent();
+    }
+
+    async function analyze(sym){
+      const ticker = sym || tickerInput.value.trim();
+      if(!ticker) return;
+      lastTicker = ticker;
 
       status.textContent = "Analyzing…";
       result.innerHTML = "";
 
-      try {
-        const url = `${API}/analyze?ticker=${encodeURIComponent(ticker)}&mode=${mode}`;
-        const res = await fetch(url);
-        const data = await res.json();
+      try{
+        await drawChart(ticker);
 
-        if (data.error) {
-          status.textContent = data.error;
-          return;
-        }
+        const r = await fetch(`${API}/analyze?ticker=${ticker}&mode=${mode}`);
+        const d = await r.json();
 
         result.innerHTML = `
           <div class="card">
-            <div class="ticker">
-              ${data.ticker}
-              <span class="price">$${data.price}</span>
-            </div>
-            <div class="signal ${data.signal}">
-              ${data.signal} (${data.change}%)
-            </div>
+            <div class="ticker">${d.ticker}<span class="price">$${d.price}</span></div>
+            <div class="signal ${d.signal}">${d.signal} (${d.change}%)</div>
             <div class="summary">
-              ${data.summary}
+              <strong>Entry:</strong> ${d.entry}<br/>
+              <strong>Stop:</strong> ${d.stop}<br/>
+              <strong>Target:</strong> ${d.target}<br/><br/>
+              ${d.summary}
             </div>
           </div>
         `;
-
         status.textContent = "";
-      } catch (e) {
+      }catch(e){
         status.textContent = "Failed to reach backend.";
       }
     }
 
     async function loadMovers(){
-      try{
-        const r = await fetch(`${API}/movers`);
-        const list = await r.json();
-        movers.innerHTML = "";
-        list.forEach(x=>{
-          const p = document.createElement("div");
-          p.className = "pill";
-          p.innerHTML = `${x.ticker} <span class="${x.change>=0?'up':'down'}">${x.change}%</span>`;
-          p.onclick = ()=> analyze(x.ticker);
-          movers.appendChild(p);
-        });
-      }catch(e){}
+      const r = await fetch(`${API}/movers`);
+      const list = await r.json();
+      movers.innerHTML = "";
+      list.forEach(x=>{
+        const p = document.createElement("div");
+        p.className = "pill";
+        p.innerHTML = `${x.ticker} <span class="${x.change>=0?'up':'down'}">${x.change}%</span>`;
+        p.onclick = ()=> analyze(x.ticker);
+        movers.appendChild(p);
+      });
     }
 
+    initChart();
     loadMovers();
   </script>
 </body>
