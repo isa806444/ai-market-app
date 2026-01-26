@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AI Market Scanner</title>
+  <title>AI Trading Terminal</title>
   <style>
     body {
       margin: 0;
@@ -15,7 +15,7 @@
     }
 
     h1 {
-      margin: 0 0 20px 0;
+      margin: 0 0 12px 0;
       font-size: 28px;
     }
 
@@ -25,10 +25,12 @@
       margin-left: 8px;
     }
 
+    .row { display:flex; gap:10px; }
+
     .search-box {
       display: flex;
       gap: 10px;
-      margin-bottom: 20px;
+      margin-bottom: 12px;
     }
 
     input {
@@ -50,10 +52,23 @@
       cursor: pointer;
     }
 
+    .mode button {
+      flex:1;
+      background:#0f172a;
+      color:#cbd5f5;
+      border:1px solid rgba(255,255,255,0.1);
+    }
+
+    .mode .active {
+      background: linear-gradient(90deg, #3b82f6, #22c55e);
+      color:white;
+      border:none;
+    }
+
     .card {
       background: rgba(15, 23, 42, 0.7);
       border-radius: 20px;
-      padding: 20px;
+      padding: 16px;
       margin-top: 12px;
       box-shadow: 0 0 0 1px rgba(255,255,255,0.05);
     }
@@ -76,10 +91,20 @@
       font-size: 14px;
     }
 
-    .Bullish { background: rgba(34,197,94,0.2); color: #22c55e; }
-    .Momentum { background: rgba(59,130,246,0.2); color: #3b82f6; }
-    .Breakout { background: rgba(234,179,8,0.25); color: #eab308; }
-    .Weak { background: rgba(148,163,184,0.2); color: #94a3b8; }
+    .Bullish, .Momentum, .Breakout, .Momentum\ Breakout {
+      background: rgba(34,197,94,0.2);
+      color: #22c55e;
+    }
+
+    .Bearish, .Weak, .Fade\ Risk {
+      background: rgba(239,68,68,0.2);
+      color: #ef4444;
+    }
+
+    .Neutral, .Chop\ Zone, .Base\ Building {
+      background: rgba(148,163,184,0.2);
+      color: #cbd5f5;
+    }
 
     .summary {
       margin-top: 12px;
@@ -87,39 +112,76 @@
       line-height: 1.4;
     }
 
+    .movers {
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      margin-top:8px;
+    }
+
+    .pill {
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,0.15);
+      cursor:pointer;
+      font-size:13px;
+    }
+
+    .up { color:#22c55e; }
+    .down { color:#ef4444; }
+
     .status {
-      margin-top: 30px;
+      margin-top: 20px;
       opacity: 0.7;
       text-align: center;
     }
   </style>
 </head>
 <body>
-  <h1>AI Market Scanner <span class="live">● Live</span></h1>
+  <h1>AI Trading Terminal <span class="live">● Live</span></h1>
 
   <div class="search-box">
-    <input id="tickerInput" placeholder="Enter any ticker (e.g. TSLA, NVDA, BITF)" />
+    <input id="tickerInput" placeholder="TSLA, NVDA, BITF…" />
     <button onclick="analyze()">Analyze</button>
   </div>
 
+  <div class="row mode" style="margin-bottom:10px;">
+    <button id="dayBtn" class="active" onclick="setMode('day')">Day</button>
+    <button id="swingBtn" onclick="setMode('swing')">Swing</button>
+  </div>
+
   <div id="result"></div>
+
+  <div class="card">
+    <strong>Top Movers</strong>
+    <div id="movers" class="movers"></div>
+  </div>
+
   <div class="status" id="status"></div>
 
   <script>
-    const API = "https://ai-market-backend.onrender.com/analyze";
+    const API = "https://ai-market-backend.onrender.com";
+    let mode = "day";
 
-    async function analyze() {
-      const ticker = document.getElementById("tickerInput").value.trim();
+    function setMode(m){
+      mode = m;
+      dayBtn.classList.toggle("active", m==="day");
+      swingBtn.classList.toggle("active", m==="swing");
+    }
+
+    async function analyze(sym) {
+      const ticker = sym || document.getElementById("tickerInput").value.trim();
       if (!ticker) return;
 
       const result = document.getElementById("result");
       const status = document.getElementById("status");
 
-      status.textContent = "Analyzing...";
+      status.textContent = "Analyzing…";
       result.innerHTML = "";
 
       try {
-        const res = await fetch(`${API}?ticker=${ticker}`);
+        const url = `${API}/analyze?ticker=${encodeURIComponent(ticker)}&mode=${mode}`;
+        const res = await fetch(url);
         const data = await res.json();
 
         if (data.error) {
@@ -144,9 +206,26 @@
 
         status.textContent = "";
       } catch (e) {
-        status.textContent = "Failed to load analysis.";
+        status.textContent = "Failed to reach backend.";
       }
     }
+
+    async function loadMovers(){
+      try{
+        const r = await fetch(`${API}/movers`);
+        const list = await r.json();
+        movers.innerHTML = "";
+        list.forEach(x=>{
+          const p = document.createElement("div");
+          p.className = "pill";
+          p.innerHTML = `${x.ticker} <span class="${x.change>=0?'up':'down'}">${x.change}%</span>`;
+          p.onclick = ()=> analyze(x.ticker);
+          movers.appendChild(p);
+        });
+      }catch(e){}
+    }
+
+    loadMovers();
   </script>
 </body>
 </html>
