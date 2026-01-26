@@ -86,7 +86,8 @@
 
     let mode = "day";
     let tf = "1D";
-    let chart, series;
+    let chart = null;
+    let series = null;
     let lastTicker = "";
 
     function setMode(m){
@@ -105,14 +106,19 @@
 
     function initChart(){
       const el = document.getElementById("chart");
+
+      if (el.clientWidth === 0) {
+        requestAnimationFrame(initChart);
+        return;
+      }
+
       chart = LightweightCharts.createChart(el, {
         width: el.clientWidth,
         height: 260,
-        layout:{background:{color:"#020617"}, textColor:"#cbd5f5"},
-        grid:{vertLines:{color:"#111827"}, horzLines:{color:"#111827"}}
+        layout:{ background:{ color:"#020617" }, textColor:"#cbd5f5" },
+        grid:{ vertLines:{ color:"#111827" }, horzLines:{ color:"#111827" } }
       });
 
-      // NEW v4+ API
       series = chart.addSeries({
         type: 'Candlestick',
         upColor: '#22c55e',
@@ -122,9 +128,20 @@
         wickUpColor: '#22c55e',
         wickDownColor: '#ef4444',
       });
+
+      window.addEventListener("resize", () => {
+        if(chart){
+          chart.applyOptions({ width: el.clientWidth });
+        }
+      });
     }
 
     async function drawChart(ticker){
+      if(!chart || !series){
+        initChart();
+        await new Promise(r => setTimeout(r, 50));
+      }
+
       let r = await fetch(`${API}/chart?ticker=${ticker}&tf=${tf}`);
       let data = await r.json();
 
@@ -137,7 +154,7 @@
         }
       }
 
-      if(Array.isArray(data) && data.length){
+      if(series && Array.isArray(data) && data.length){
         series.setData(data);
         chart.timeScale().fitContent();
       }
