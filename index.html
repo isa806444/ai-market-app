@@ -39,7 +39,7 @@
     .up{color:#22c55e;} .down{color:#ef4444;}
     .status { margin-top:20px; opacity:.7; text-align:center; }
 
-    #chart { height:260px; }
+    #chart { height:260px; width:100%; }
     .tf button { flex:1; background:#020617; color:#cbd5f5; border:1px solid rgba(255,255,255,.1); }
     .tf .active { background:#38bdf8; color:#020617; border:none; }
   </style>
@@ -104,10 +104,12 @@
     }
 
     function initChart(){
-      chart = LightweightCharts.createChart(document.getElementById("chart"), {
+      const el = document.getElementById("chart");
+      chart = LightweightCharts.createChart(el, {
+        width: el.clientWidth,
+        height: 260,
         layout:{background:{color:"#020617"}, textColor:"#cbd5f5"},
-        grid:{vertLines:{color:"#111827"}, horzLines:{color:"#111827"}},
-        height:260
+        grid:{vertLines:{color:"#111827"}, horzLines:{color:"#111827"}}
       });
       series = chart.addCandlestickSeries();
     }
@@ -116,23 +118,18 @@
       let r = await fetch(`${API}/chart?ticker=${ticker}&tf=${tf}`);
       let data = await r.json();
 
-      // Fallback if empty (after-hours/weekend)
-      if(!data || data.length === 0){
-        console.log("No chart data for", tf, "falling back…");
+      if(!Array.isArray(data) || data.length === 0){
         r = await fetch(`${API}/chart?ticker=${ticker}&tf=5D`);
         data = await r.json();
-
         if(!data || data.length === 0){
           r = await fetch(`${API}/chart?ticker=${ticker}&tf=1M`);
           data = await r.json();
         }
       }
 
-      if(data && data.length){
+      if(Array.isArray(data) && data.length){
         series.setData(data);
         chart.timeScale().fitContent();
-      } else {
-        console.warn("No chart data available for", ticker);
       }
     }
 
@@ -178,20 +175,16 @@
     }
 
     async function loadMovers(){
-      try{
-        const r = await fetch(`${API}/movers`);
-        const list = await r.json();
-        moversEl.innerHTML = "";
-        list.forEach(x=>{
-          const p = document.createElement("div");
-          p.className = "pill";
-          p.innerHTML = `${x.ticker} <span class="${x.change>=0?'up':'down'}">${x.change}%</span>`;
-          p.onclick = ()=> analyze(x.ticker);
-          moversEl.appendChild(p);
-        });
-      }catch(e){
-        console.error("Movers failed", e);
-      }
+      const r = await fetch(`${API}/movers`);
+      const list = await r.json();
+      moversEl.innerHTML = "";
+      list.forEach(x=>{
+        const p = document.createElement("div");
+        p.className = "pill";
+        p.innerHTML = `${x.ticker} <span class="${x.change>=0?'up':'down'}">${x.change}%</span>`;
+        p.onclick = ()=> analyze(x.ticker);
+        moversEl.appendChild(p);
+      });
     }
 
     analyzeBtn.onclick = ()=> analyze();
