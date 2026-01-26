@@ -49,18 +49,18 @@
 
   <div class="search-box">
     <input id="tickerInput" placeholder="TSLA, NVDA, BITF…" />
-    <button onclick="analyze()">Analyze</button>
+    <button id="analyzeBtn">Analyze</button>
   </div>
 
   <div class="row mode" style="margin-bottom:8px;">
-    <button id="dayBtn" class="active" onclick="setMode('day')">Day</button>
-    <button id="swingBtn" onclick="setMode('swing')">Swing</button>
+    <button id="dayBtn" class="active">Day</button>
+    <button id="swingBtn">Swing</button>
   </div>
 
   <div class="row tf" style="margin-bottom:8px;">
-    <button id="tf1d" class="active" onclick="setTF('1D')">1D</button>
-    <button id="tf5d" onclick="setTF('5D')">5D</button>
-    <button id="tf1m" onclick="setTF('1M')">1M</button>
+    <button id="tf1d" class="active">1D</button>
+    <button id="tf5d">5D</button>
+    <button id="tf1m">1M</button>
   </div>
 
   <div id="chart" class="card"></div>
@@ -75,6 +75,15 @@
 
   <script>
     const API = "https://ai-market-backend.onrender.com";
+
+    const tickerInput = document.getElementById("tickerInput");
+    const analyzeBtn = document.getElementById("analyzeBtn");
+    const dayBtn = document.getElementById("dayBtn");
+    const swingBtn = document.getElementById("swingBtn");
+    const statusEl = document.getElementById("status");
+    const resultEl = document.getElementById("result");
+    const moversEl = document.getElementById("movers");
+
     let mode = "day";
     let tf = "1D";
     let chart, series;
@@ -106,8 +115,10 @@
     async function drawChart(ticker){
       const r = await fetch(`${API}/chart?ticker=${ticker}&tf=${tf}`);
       const data = await r.json();
-      series.setData(data);
-      chart.timeScale().fitContent();
+      if(data.length){
+        series.setData(data);
+        chart.timeScale().fitContent();
+      }
     }
 
     async function analyze(sym){
@@ -115,8 +126,8 @@
       if(!ticker) return;
       lastTicker = ticker;
 
-      status.textContent = "Analyzing…";
-      result.innerHTML = "";
+      statusEl.textContent = "Analyzing…";
+      resultEl.innerHTML = "";
 
       try{
         await drawChart(ticker);
@@ -125,13 +136,13 @@
         const d = await r.json();
 
         if(d.error){
-          status.textContent = d.error;
+          statusEl.textContent = d.error;
           return;
         }
 
         const sigClass = d.signal.replace(/ /g, "\\ ");
 
-        result.innerHTML = `
+        resultEl.innerHTML = `
           <div class="card">
             <div class="ticker">${d.ticker}<span class="price">$${d.price}</span></div>
             <div class="signal ${sigClass}">${d.signal} (${d.change}%)</div>
@@ -144,10 +155,10 @@
           </div>
         `;
 
-        status.textContent = "";
+        statusEl.textContent = "";
       }catch(e){
         console.error(e);
-        status.textContent = "Failed to reach backend.";
+        statusEl.textContent = "Frontend error – check console.";
       }
     }
 
@@ -155,16 +166,25 @@
       try{
         const r = await fetch(`${API}/movers`);
         const list = await r.json();
-        movers.innerHTML = "";
+        moversEl.innerHTML = "";
         list.forEach(x=>{
           const p = document.createElement("div");
           p.className = "pill";
           p.innerHTML = `${x.ticker} <span class="${x.change>=0?'up':'down'}">${x.change}%</span>`;
           p.onclick = ()=> analyze(x.ticker);
-          movers.appendChild(p);
+          moversEl.appendChild(p);
         });
-      }catch(e){}
+      }catch(e){
+        console.error("Movers failed", e);
+      }
     }
+
+    analyzeBtn.onclick = ()=> analyze();
+    dayBtn.onclick = ()=> setMode("day");
+    swingBtn.onclick = ()=> setMode("swing");
+    document.getElementById("tf1d").onclick = ()=> setTF("1D");
+    document.getElementById("tf5d").onclick = ()=> setTF("5D");
+    document.getElementById("tf1m").onclick = ()=> setTF("1M");
 
     initChart();
     loadMovers();
