@@ -29,7 +29,7 @@
     .price { float:right; color:#93c5fd; }
 
     .signal { margin-top:8px; display:inline-block; padding:6px 12px; border-radius:999px; font-size:14px; }
-    .Bullish, .Momentum, .Breakout, .Momentum\ Breakout { background:rgba(34,197,94,.2); color:#22c55e; }
+    .Bullish, .Momentum, .Breakout, .Momentum\ Breakout, .Bullish\ Momentum { background:rgba(34,197,94,.2); color:#22c55e; }
     .Bearish, .Weak, .Fade\ Risk { background:rgba(239,68,68,.2); color:#ef4444; }
     .Neutral, .Chop\ Zone, .Base\ Building { background:rgba(148,163,184,.2); color:#cbd5f5; }
 
@@ -78,12 +78,14 @@
     let mode = "day";
     let tf = "1D";
     let chart, series;
+    let lastTicker = "";
 
     function setMode(m){
       mode = m;
       dayBtn.classList.toggle("active", m==="day");
       swingBtn.classList.toggle("active", m==="swing");
     }
+
     function setTF(t){
       tf = t;
       ["1D","5D","1M"].forEach(x=>{
@@ -100,8 +102,6 @@
       });
       series = chart.addCandlestickSeries();
     }
-
-    let lastTicker = "";
 
     async function drawChart(ticker){
       const r = await fetch(`${API}/chart?ticker=${ticker}&tf=${tf}`);
@@ -121,13 +121,20 @@
       try{
         await drawChart(ticker);
 
-        const r = await fetch(`${API}/analyze?ticker=${ticker}&mode=${mode}`);
+        const r = await fetch(`${API}/analyze?ticker=${encodeURIComponent(ticker)}&mode=${mode}`);
         const d = await r.json();
+
+        if(d.error){
+          status.textContent = d.error;
+          return;
+        }
+
+        const sigClass = d.signal.replace(/ /g, "\\ ");
 
         result.innerHTML = `
           <div class="card">
             <div class="ticker">${d.ticker}<span class="price">$${d.price}</span></div>
-            <div class="signal ${d.signal}">${d.signal} (${d.change}%)</div>
+            <div class="signal ${sigClass}">${d.signal} (${d.change}%)</div>
             <div class="summary">
               <strong>Entry:</strong> ${d.entry}<br/>
               <strong>Stop:</strong> ${d.stop}<br/>
@@ -136,23 +143,27 @@
             </div>
           </div>
         `;
+
         status.textContent = "";
       }catch(e){
+        console.error(e);
         status.textContent = "Failed to reach backend.";
       }
     }
 
     async function loadMovers(){
-      const r = await fetch(`${API}/movers`);
-      const list = await r.json();
-      movers.innerHTML = "";
-      list.forEach(x=>{
-        const p = document.createElement("div");
-        p.className = "pill";
-        p.innerHTML = `${x.ticker} <span class="${x.change>=0?'up':'down'}">${x.change}%</span>`;
-        p.onclick = ()=> analyze(x.ticker);
-        movers.appendChild(p);
-      });
+      try{
+        const r = await fetch(`${API}/movers`);
+        const list = await r.json();
+        movers.innerHTML = "";
+        list.forEach(x=>{
+          const p = document.createElement("div");
+          p.className = "pill";
+          p.innerHTML = `${x.ticker} <span class="${x.change>=0?'up':'down'}">${x.change}%</span>`;
+          p.onclick = ()=> analyze(x.ticker);
+          movers.appendChild(p);
+        });
+      }catch(e){}
     }
 
     initChart();
