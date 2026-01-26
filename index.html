@@ -113,11 +113,26 @@
     }
 
     async function drawChart(ticker){
-      const r = await fetch(`${API}/chart?ticker=${ticker}&tf=${tf}`);
-      const data = await r.json();
-      if(data.length){
+      let r = await fetch(`${API}/chart?ticker=${ticker}&tf=${tf}`);
+      let data = await r.json();
+
+      // Fallback if empty (after-hours/weekend)
+      if(!data || data.length === 0){
+        console.log("No chart data for", tf, "falling back…");
+        r = await fetch(`${API}/chart?ticker=${ticker}&tf=5D`);
+        data = await r.json();
+
+        if(!data || data.length === 0){
+          r = await fetch(`${API}/chart?ticker=${ticker}&tf=1M`);
+          data = await r.json();
+        }
+      }
+
+      if(data && data.length){
         series.setData(data);
         chart.timeScale().fitContent();
+      } else {
+        console.warn("No chart data available for", ticker);
       }
     }
 
