@@ -4,7 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AI Trading Terminal</title>
-  <script src="https://unpkg.com/lightweight-charts@3.8.0/dist/lightweight-charts.standalone.production.js"></script>
   <style>
     body {
       margin: 0;
@@ -34,7 +33,6 @@
     .up{color:#22c55e;} .down{color:#ef4444;}
     .status { margin-top:20px; opacity:.7; text-align:center; }
 
-    #chart { height:260px; width:100%; }
     .tf button { flex:1; background:#020617; color:#cbd5f5; border:1px solid rgba(255,255,255,.1); }
     .tf .active { background:#38bdf8; color:#020617; border:none; }
   </style>
@@ -58,7 +56,6 @@
     <button id="tf1m">1M</button>
   </div>
 
-  <div id="chart" class="card"></div>
   <div id="result"></div>
 
   <div class="card">
@@ -80,14 +77,6 @@
     const moversEl = document.getElementById("movers");
 
     let mode = "day";
-    let tf = "1D";
-    let chart = null;
-    let series = null;
-    let lastTicker = "";
-    let liveTimer = null;
-
-    // 🔴 NEW: tick poll timer
-    let tickTimer = null;
 
     function setMode(m){
       mode = m;
@@ -95,119 +84,14 @@
       swingBtn.classList.toggle("active", m==="swing");
     }
 
-    function setTF(t){
-      tf = t;
-      ["1D","5D","1M"].forEach(x=>{
-        document.getElementById("tf"+x.toLowerCase()).classList.toggle("active", x===t);
-      });
-      if(lastTicker) startLive(lastTicker);
-    }
-
-    function initChart(){
-      if (chart) return;
-      const el = document.getElementById("chart");
-
-      chart = LightweightCharts.createChart(el, {
-        width: el.clientWidth,
-        height: 260,
-        layout:{ background:{ color:"#020617" }, textColor:"#cbd5f5" },
-        grid:{ vertLines:{ color:"#111827" }, horzLines:{ color:"#111827" } }
-      });
-    }
-
-    function newSeries(){
-      if(series && chart){
-        chart.removeSeries(series);
-      }
-      series = chart.addCandlestickSeries({
-        upColor: '#22c55e',
-        downColor: '#ef4444',
-        borderUpColor: '#22c55e',
-        borderDownColor: '#ef4444',
-        wickUpColor: '#22c55e',
-        wickDownColor: '#ef4444',
-      });
-    }
-
-    async function fetchChartData(ticker){
-      let r = await fetch(`${API}/chart?ticker=${ticker}&tf=${tf}`);
-      let data = await r.json();
-
-      if(!Array.isArray(data) || !data.length){
-        r = await fetch(`${API}/chart?ticker=${ticker}&tf=5D`);
-        data = await r.json();
-      }
-
-      if(Array.isArray(data) && data.length){
-        series.setData(data);
-        chart.timeScale().fitContent();
-      }
-    }
-
-    function stopLive(){
-      if(liveTimer){
-        clearInterval(liveTimer);
-        liveTimer = null;
-      }
-      stopTicks();
-    }
-
-    // 🔴 NEW: stop tick polling
-    function stopTicks(){
-      if(tickTimer){
-        clearInterval(tickTimer);
-        tickTimer = null;
-      }
-    }
-
-    // 🔴 NEW: poll last trade and update current candle
-    async function pollLastTrade(){
-      if(!lastTicker || !series) return;
-
-      try{
-        const r = await fetch(`${API}/last-trade?ticker=${lastTicker}`);
-        const d = await r.json();
-        if(!d.price) return;
-
-        const now = Math.floor(Date.now() / 1000);
-
-        series.update({
-          time: now,
-          open: d.price,
-          high: d.price,
-          low: d.price,
-          close: d.price
-        });
-      }catch(e){}
-    }
-
-    async function startLive(ticker){
-      stopLive();
-      initChart();
-      newSeries();
-
-      await fetchChartData(ticker);
-      statusEl.textContent = `Live feed active for ${ticker.toUpperCase()}…`;
-
-      liveTimer = setInterval(()=>{
-        fetchChartData(ticker);
-      }, 10000);
-
-      // 🔴 NEW: start tick stream
-      tickTimer = setInterval(pollLastTrade, 1000);
-    }
-
     async function analyze(sym){
       const ticker = (sym || tickerInput.value.trim()).toUpperCase();
       if(!ticker) return;
 
-      lastTicker = ticker;
-      statusEl.textContent = "Connecting to live feed…";
+      statusEl.textContent = "Analyzing…";
       resultEl.innerHTML = "";
 
       try{
-        await startLive(ticker);
-
         const r = await fetch(`${API}/analyze?ticker=${encodeURIComponent(ticker)}&mode=${mode}`);
         const d = await r.json();
 
@@ -258,6 +142,8 @@
             </div>
           </div>
         `;
+
+        statusEl.textContent = "";
       }catch(e){
         console.error(e);
         statusEl.textContent = "Frontend error – check console.";
@@ -280,9 +166,6 @@
     analyzeBtn.onclick = ()=> analyze();
     dayBtn.onclick = ()=> setMode("day");
     swingBtn.onclick = ()=> setMode("swing");
-    document.getElementById("tf1d").onclick = ()=> setTF("1D");
-    document.getElementById("tf5d").onclick = ()=> setTF("5D");
-    document.getElementById("tf1m").onclick = ()=> setTF("1M");
 
     loadMovers();
   </script>
