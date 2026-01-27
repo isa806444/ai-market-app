@@ -109,7 +109,12 @@
         layout:{ background:{ color:"#020617" }, textColor:"#cbd5f5" },
         grid:{ vertLines:{ color:"#111827" }, horzLines:{ color:"#111827" } }
       });
+    }
 
+    function newSeries(){
+      if(series && chart){
+        chart.removeSeries(series);
+      }
       series = chart.addCandlestickSeries({
         upColor: '#22c55e',
         downColor: '#ef4444',
@@ -122,6 +127,8 @@
 
     async function drawChart(ticker){
       initChart();
+      newSeries();
+
       let r = await fetch(`${API}/chart?ticker=${ticker}&tf=${tf}`);
       let data = await r.json();
 
@@ -157,8 +164,8 @@
 
         const levels = d.levels || {};
         const plan = d.plan || {};
-        const targets = Array.isArray(plan.targets) ? plan.targets : (plan.target ? [plan.target] : []);
-        const risks = Array.isArray(d.risk_notes) ? d.risk_notes : (d.notes ? [d.notes] : []);
+        const targets = Array.isArray(plan.targets) ? plan.targets : [];
+        const risks = Array.isArray(d.risk_notes) ? d.risk_notes : [];
 
         resultEl.innerHTML = `
           <div class="card">
@@ -168,7 +175,7 @@
             </div>
 
             <div class="summary">
-              <strong>Bias:</strong> ${d.bias || d.signal || "Neutral"}<br/>
+              <strong>Bias:</strong> ${d.bias || "Neutral"}<br/>
               <strong>Trend:</strong> ${d.trend || "—"}<br/><br/>
 
               <strong>Key Levels</strong><br/>
