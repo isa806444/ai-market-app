@@ -86,6 +86,9 @@
     let lastTicker = "";
     let liveTimer = null;
 
+    // 🔴 NEW: tick poll timer
+    let tickTimer = null;
+
     function setMode(m){
       mode = m;
       dayBtn.classList.toggle("active", m==="day");
@@ -146,6 +149,36 @@
         clearInterval(liveTimer);
         liveTimer = null;
       }
+      stopTicks();
+    }
+
+    // 🔴 NEW: stop tick polling
+    function stopTicks(){
+      if(tickTimer){
+        clearInterval(tickTimer);
+        tickTimer = null;
+      }
+    }
+
+    // 🔴 NEW: poll last trade and update current candle
+    async function pollLastTrade(){
+      if(!lastTicker || !series) return;
+
+      try{
+        const r = await fetch(`${API}/last-trade?ticker=${lastTicker}`);
+        const d = await r.json();
+        if(!d.price) return;
+
+        const now = Math.floor(Date.now() / 1000);
+
+        series.update({
+          time: now,
+          open: d.price,
+          high: d.price,
+          low: d.price,
+          close: d.price
+        });
+      }catch(e){}
     }
 
     async function startLive(ticker){
@@ -154,11 +187,14 @@
       newSeries();
 
       await fetchChartData(ticker);
-      statusEl.textContent = `Live feed active for ${ticker.toUpperCase()} (polling)…`;
+      statusEl.textContent = `Live feed active for ${ticker.toUpperCase()}…`;
 
       liveTimer = setInterval(()=>{
         fetchChartData(ticker);
-      }, 1000);
+      }, 10000);
+
+      // 🔴 NEW: start tick stream
+      tickTimer = setInterval(pollLastTrade, 1000);
     }
 
     async function analyze(sym){
