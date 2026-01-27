@@ -84,7 +84,17 @@
     let chart = null;
     let series = null;
     let lastTicker = "";
+
     let liveTimer = null;
+
+    function startLiveUpdates(){
+      if(liveTimer) clearInterval(liveTimer);
+      liveTimer = setInterva(() => {
+        if(lastTicker){
+          drawChart(lastTicker);
+        }
+      }, 2000); // every 2 seconds
+    }
 
     function setMode(m){
       mode = m;
@@ -97,7 +107,7 @@
       ["1D","5D","1M"].forEach(x=>{
         document.getElementById("tf"+x.toLowerCase()).classList.toggle("active", x===t);
       });
-      if(lastTicker) startLive(lastTicker);
+      if(lastTicker) startLiveUpdates(lastTicker);
     }
 
     function initChart(){
@@ -166,6 +176,7 @@
       if(!ticker) return;
 
       lastTicker = ticker;
+      startLiveUpdates();
       statusEl.textContent = "Connecting to live feed…";
       resultEl.innerHTML = "";
 
