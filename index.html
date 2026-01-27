@@ -84,6 +84,7 @@
     let chart = null;
     let series = null;
     let lastTicker = "";
+    let liveTimer = null;
 
     function setMode(m){
       mode = m;
@@ -96,7 +97,7 @@
       ["1D","5D","1M"].forEach(x=>{
         document.getElementById("tf"+x.toLowerCase()).classList.toggle("active", x===t);
       });
-      if(lastTicker) drawChart(lastTicker);
+      if(lastTicker) startLive(lastTicker);
     }
 
     function initChart(){
@@ -125,10 +126,7 @@
       });
     }
 
-    async function drawChart(ticker){
-      initChart();
-      newSeries();
-
+    async function fetchChartData(ticker){
       let r = await fetch(`${API}/chart?ticker=${ticker}&tf=${tf}`);
       let data = await r.json();
 
@@ -143,16 +141,36 @@
       }
     }
 
-    async function analyze(sym){
-      const ticker = sym || tickerInput.value.trim();
-      if(!ticker) return;
-      lastTicker = ticker;
+    function stopLive(){
+      if(liveTimer){
+        clearInterval(liveTimer);
+        liveTimer = null;
+      }
+    }
 
-      statusEl.textContent = "Analyzing…";
+    async function startLive(ticker){
+      stopLive();
+      initChart();
+      newSeries();
+
+      await fetchChartData(ticker);
+      statusEl.textContent = `Live feed active for ${ticker.toUpperCase()} (polling)…`;
+
+      liveTimer = setInterval(()=>{
+        fetchChartData(ticker);
+      }, 1000);
+    }
+
+    async function analyze(sym){
+      const ticker = (sym || tickerInput.value.trim()).toUpperCase();
+      if(!ticker) return;
+
+      lastTicker = ticker;
+      statusEl.textContent = "Connecting to live feed…";
       resultEl.innerHTML = "";
 
       try{
-        await drawChart(ticker);
+        await startLive(ticker);
 
         const r = await fetch(`${API}/analyze?ticker=${encodeURIComponent(ticker)}&mode=${mode}`);
         const d = await r.json();
@@ -204,8 +222,6 @@
             </div>
           </div>
         `;
-
-        statusEl.textContent = "";
       }catch(e){
         console.error(e);
         statusEl.textContent = "Frontend error – check console.";
