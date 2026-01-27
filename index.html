@@ -101,7 +101,6 @@
 
     function initChart(){
       if (chart) return;
-
       const el = document.getElementById("chart");
 
       chart = LightweightCharts.createChart(el, {
@@ -119,25 +118,16 @@
         wickUpColor: '#22c55e',
         wickDownColor: '#ef4444',
       });
-
-      window.addEventListener("resize", () => {
-        chart.applyOptions({ width: el.clientWidth });
-      });
     }
 
     async function drawChart(ticker){
       initChart();
-
       let r = await fetch(`${API}/chart?ticker=${ticker}&tf=${tf}`);
       let data = await r.json();
 
-      if(!Array.isArray(data) || data.length === 0){
+      if(!Array.isArray(data) || !data.length){
         r = await fetch(`${API}/chart?ticker=${ticker}&tf=5D`);
         data = await r.json();
-        if(!data || data.length === 0){
-          r = await fetch(`${API}/chart?ticker=${ticker}&tf=1M`);
-          data = await r.json();
-        }
       }
 
       if(Array.isArray(data) && data.length){
@@ -165,36 +155,45 @@
           return;
         }
 
+        const levels = d.levels || {};
+        const plan = d.plan || {};
+        const targets = Array.isArray(plan.targets) ? plan.targets : (plan.target ? [plan.target] : []);
+        const risks = Array.isArray(d.risk_notes) ? d.risk_notes : (d.notes ? [d.notes] : []);
+
         resultEl.innerHTML = `
           <div class="card">
             <div class="ticker">
               ${d.ticker}
-              <span class="price">$${d.price}</span>
+              <span class="price">$${d.price ?? ""}</span>
             </div>
 
             <div class="summary">
-              <strong>Bias:</strong> ${d.bias}<br/>
-              <strong>Trend:</strong> ${d.trend}<br/><br/>
+              <strong>Bias:</strong> ${d.bias || d.signal || "Neutral"}<br/>
+              <strong>Trend:</strong> ${d.trend || "—"}<br/><br/>
 
               <strong>Key Levels</strong><br/>
-              Support: ${d.levels.support}<br/>
-              Resistance: ${d.levels.resistance}<br/><br/>
+              Support: ${levels.support || "—"}<br/>
+              Resistance: ${levels.resistance || "—"}<br/><br/>
 
               <strong>Trade Plan</strong><br/>
-              Entry: ${d.plan.entry}<br/>
-              Stop: ${d.plan.stop}<br/>
-              Targets:
-              <ul style="margin:6px 0 6px 16px;">
-                ${d.plan.targets.map(t => `<li>${t}</li>`).join("")}
-              </ul>
+              Entry: ${plan.entry || "—"}<br/>
+              Stop: ${plan.stop || "—"}<br/>
+              ${targets.length ? `
+                Targets:
+                <ul style="margin:6px 0 6px 16px;">
+                  ${targets.map(t => `<li>${t}</li>`).join("")}
+                </ul>
+              ` : ""}
 
-              <strong>Risk Notes</strong>
-              <ul style="margin:6px 0 0 16px;">
-                ${d.risk_notes.map(r => `<li>${r}</li>`).join("")}
-              </ul>
+              ${risks.length ? `
+                <strong>Risk Notes</strong>
+                <ul style="margin:6px 0 0 16px;">
+                  ${risks.map(r => `<li>${r}</li>`).join("")}
+                </ul>
+              ` : ""}
 
               <br/>
-              ${d.summary}
+              ${d.summary || ""}
             </div>
           </div>
         `;
