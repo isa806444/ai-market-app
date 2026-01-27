@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AI Trading Terminal</title>
+
   <style>
     body {
       margin: 0;
@@ -12,49 +13,165 @@
       color: white;
       min-height: 100vh;
       padding: 20px;
+      overflow-x: hidden;
     }
 
-    h1 { margin: 0 0 12px 0; font-size: 28px; }
-    .live { color:#22c55e; font-size:14px; margin-left:8px; }
-    .row { display:flex; gap:10px; }
-    .search-box { display:flex; gap:10px; margin-bottom:12px; }
-    input { flex:1; padding:14px; border-radius:12px; border:none; font-size:16px; }
-    button { padding:14px 18px; border-radius:12px; border:none; font-size:16px; background:linear-gradient(90deg,#3b82f6,#22c55e); color:white; cursor:pointer; }
-    .mode button { flex:1; background:#0f172a; color:#cbd5f5; border:1px solid rgba(255,255,255,0.1); }
-    .mode .active { background:linear-gradient(90deg,#3b82f6,#22c55e); color:white; border:none; }
+    h1 {
+      margin: 0 0 14px 0;
+      font-size: 34px;
+      text-align: center;
+    }
 
-    .card { background:rgba(15,23,42,.7); border-radius:20px; padding:16px; margin-top:12px; box-shadow:0 0 0 1px rgba(255,255,255,.05); }
+    .live { color:#22c55e; font-size:14px; margin-left:8px; }
+
+    .controls {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .search-box {
+      display: flex;
+      gap: 8px;
+      width: 420px;
+      max-width: 90%;
+    }
+
+    input {
+      flex:1;
+      padding:10px;
+      border-radius:10px;
+      border:none;
+      font-size:14px;
+    }
+
+    button {
+      padding:10px 14px;
+      border-radius:10px;
+      border:none;
+      font-size:14px;
+      background:linear-gradient(90deg,#3b82f6,#22c55e);
+      color:white;
+      cursor:pointer;
+    }
+
+    .mode {
+      display: flex;
+      gap: 8px;
+      width: 420px;
+      max-width: 90%;
+    }
+
+    .mode button {
+      flex:1;
+      background:#0f172a;
+      color:#cbd5f5;
+      border:1px solid rgba(255,255,255,0.1);
+    }
+
+    .mode .active {
+      background:linear-gradient(90deg,#3b82f6,#22c55e);
+      color:white;
+      border:none;
+    }
+
+    .card {
+      background:rgba(15,23,42,.7);
+      border-radius:20px;
+      padding:16px;
+      margin-top:12px;
+      box-shadow:0 0 0 1px rgba(255,255,255,.05);
+      max-width: 700px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
     .ticker { font-size:22px; font-weight:bold; }
     .price { float:right; color:#93c5fd; }
 
     .summary { margin-top:12px; color:#cbd5f5; line-height:1.4; }
-    .movers { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
-    .pill { padding:6px 10px; border-radius:999px; border:1px solid rgba(255,255,255,.15); cursor:pointer; font-size:13px; }
-    .up{color:#22c55e;} .down{color:#ef4444;}
     .status { margin-top:20px; opacity:.7; text-align:center; }
 
+    /* Movers Panel */
+    .movers-btn {
+      position: fixed;
+      right: 16px;
+      top: 16px;
+      z-index: 50;
+      padding:10px 14px;
+      border-radius:12px;
+      background:linear-gradient(90deg,#3b82f6,#22c55e);
+      color:white;
+      cursor:pointer;
+    }
+
+    .movers-panel {
+      position: fixed;
+      top: 0;
+      right: -320px;
+      width: 300px;
+      height: 100%;
+      background: #020617;
+      box-shadow: -4px 0 20px rgba(0,0,0,.6);
+      padding: 16px;
+      transition: right .3s ease;
+      z-index: 40;
+    }
+
+    .movers-panel.open {
+      right: 0;
+    }
+
+    .movers-panel h3 {
+      margin-top: 0;
+      margin-bottom: 12px;
+      text-align: center;
+    }
+
+    .movers {
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+    }
+
+    .pill {
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.15);
+      cursor:pointer;
+      font-size:13px;
+    }
+
+    .up{color:#22c55e;}
+    .down{color:#ef4444;}
   </style>
 </head>
 <body>
-  <h1>AI Trading Terminal <span class="live">● Live</span></h1>
 
-  <div class="search-box">
-    <input id="tickerInput" placeholder="TSLA, NVDA, BITF…" />
-    <button id="analyzeBtn">Analyze</button>
-  </div>
+  <button class="movers-btn" id="toggleMovers">Top Movers</button>
 
-  <div class="row mode" style="margin-bottom:8px;">
-    <button id="dayBtn" class="active">Day</button>
-    <button id="swingBtn">Swing</button>
-  </div>
-
-  <div id="result"></div>
-
-  <div class="card">
-    <strong>Top Movers</strong>
+  <div class="movers-panel" id="moversPanel">
+    <h3>Top Movers</h3>
     <div id="movers" class="movers"></div>
   </div>
 
+  <h1>AI Trading Terminal <span class="live">● Live</span></h1>
+
+  <div class="controls">
+    <div class="search-box">
+      <input id="tickerInput" placeholder="TSLA, NVDA, BITF…" />
+      <button id="analyzeBtn">Analyze</button>
+    </div>
+
+    <div class="mode">
+      <button id="dayBtn" class="active">Day</button>
+      <button id="swingBtn">Swing</button>
+    </div>
+  </div>
+
+  <div id="result"></div>
   <div class="status" id="status"></div>
 
   <script>
@@ -68,6 +185,9 @@
     const resultEl = document.getElementById("result");
     const moversEl = document.getElementById("movers");
 
+    const moversPanel = document.getElementById("moversPanel");
+    const toggleMovers = document.getElementById("toggleMovers");
+
     let mode = "day";
 
     function setMode(m){
@@ -75,6 +195,10 @@
       dayBtn.classList.toggle("active", m==="day");
       swingBtn.classList.toggle("active", m==="swing");
     }
+
+    toggleMovers.onclick = () => {
+      moversPanel.classList.toggle("open");
+    };
 
     async function analyze(sym){
       const ticker = (sym || tickerInput.value.trim()).toUpperCase();
@@ -115,6 +239,7 @@
               <strong>Trade Plan</strong><br/>
               Entry: ${plan.entry || "—"}<br/>
               Stop: ${plan.stop || "—"}<br/>
+
               ${targets.length ? `
                 Targets:
                 <ul style="margin:6px 0 6px 16px;">
