@@ -28,11 +28,6 @@
     .ticker { font-size:22px; font-weight:bold; }
     .price { float:right; color:#93c5fd; }
 
-    .signal { margin-top:8px; display:inline-block; padding:6px 12px; border-radius:999px; font-size:14px; }
-    .Bullish, .Momentum, .Breakout, .Momentum\ Breakout, .Bullish\ Momentum { background:rgba(34,197,94,.2); color:#22c55e; }
-    .Bearish, .Weak, .Fade\ Risk { background:rgba(239,68,68,.2); color:#ef4444; }
-    .Neutral, .Chop\ Zone, .Base\ Building { background:rgba(148,163,184,.2); color:#cbd5f5; }
-
     .summary { margin-top:12px; color:#cbd5f5; line-height:1.4; }
     .movers { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
     .pill { padding:6px 10px; border-radius:999px; border:1px solid rgba(255,255,255,.15); cursor:pointer; font-size:13px; }
@@ -170,16 +165,35 @@
           return;
         }
 
-        const sigClass = d.signal.replace(/ /g, "\\ ");
-
         resultEl.innerHTML = `
           <div class="card">
-            <div class="ticker">${d.ticker}<span class="price">$${d.price}</span></div>
-            <div class="signal ${sigClass}">${d.signal} (${d.change}%)</div>
+            <div class="ticker">
+              ${d.ticker}
+              <span class="price">$${d.price}</span>
+            </div>
+
             <div class="summary">
-              <strong>Entry:</strong> ${d.entry}<br/>
-              <strong>Stop:</strong> ${d.stop}<br/>
-              <strong>Target:</strong> ${d.target}<br/><br/>
+              <strong>Bias:</strong> ${d.bias}<br/>
+              <strong>Trend:</strong> ${d.trend}<br/><br/>
+
+              <strong>Key Levels</strong><br/>
+              Support: ${d.levels.support}<br/>
+              Resistance: ${d.levels.resistance}<br/><br/>
+
+              <strong>Trade Plan</strong><br/>
+              Entry: ${d.plan.entry}<br/>
+              Stop: ${d.plan.stop}<br/>
+              Targets:
+              <ul style="margin:6px 0 6px 16px;">
+                ${d.plan.targets.map(t => `<li>${t}</li>`).join("")}
+              </ul>
+
+              <strong>Risk Notes</strong>
+              <ul style="margin:6px 0 0 16px;">
+                ${d.risk_notes.map(r => `<li>${r}</li>`).join("")}
+              </ul>
+
+              <br/>
               ${d.summary}
             </div>
           </div>
