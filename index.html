@@ -4,7 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AI Trading Terminal</title>
-
   <style>
     body {
       margin: 0;
@@ -13,278 +12,235 @@
       color: white;
       min-height: 100vh;
       padding: 20px;
-      overflow-x: hidden;
     }
 
-    h1 {
-      margin: 0 0 14px 0;
-      font-size: 34px;
-      text-align: center;
-    }
-
+    h1 { margin: 0 0 16px 0; font-size: 30px; text-align:center; }
     .live { color:#22c55e; font-size:14px; margin-left:8px; }
 
-    .controls {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 16px;
+    .topbar{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-bottom:16px;
     }
 
-    .search-box {
-      display: flex;
-      gap: 8px;
-      width: 420px;
-      max-width: 90%;
+    .controls{
+      max-width:600px;
+      margin:0 auto 16px auto;
+      text-align:center;
     }
 
-    input {
-      flex:1;
-      padding:10px;
-      border-radius:10px;
-      border:none;
-      font-size:14px;
-    }
+    .search-box { display:flex; gap:10px; margin-bottom:10px; }
+    input { flex:1; padding:10px; border-radius:10px; border:none; font-size:14px; }
+    button { padding:10px 14px; border-radius:10px; border:none; font-size:14px; background:linear-gradient(90deg,#3b82f6,#22c55e); color:white; cursor:pointer; }
 
-    button {
-      padding:10px 14px;
-      border-radius:10px;
-      border:none;
-      font-size:14px;
-      background:linear-gradient(90deg,#3b82f6,#22c55e);
-      color:white;
-      cursor:pointer;
-    }
+    .mode { display:flex; gap:10px; }
+    .mode button { flex:1; background:#0f172a; color:#cbd5f5; border:1px solid rgba(255,255,255,0.1); }
+    .mode .active { background:linear-gradient(90deg,#3b82f6,#22c55e); color:white; border:none; }
 
-    .mode {
-      display: flex;
-      gap: 8px;
-      width: 420px;
-      max-width: 90%;
-    }
-
-    .mode button {
-      flex:1;
-      background:#0f172a;
-      color:#cbd5f5;
-      border:1px solid rgba(255,255,255,0.1);
-    }
-
-    .mode .active {
-      background:linear-gradient(90deg,#3b82f6,#22c55e);
-      color:white;
-      border:none;
-    }
-
-    .card {
-      background:rgba(15,23,42,.7);
-      border-radius:20px;
-      padding:16px;
-      margin-top:12px;
-      box-shadow:0 0 0 1px rgba(255,255,255,.05);
-      max-width: 700px;
-      margin-left: auto;
-      margin-right: auto;
-    }
-
+    .card { background:rgba(15,23,42,.7); border-radius:20px; padding:16px; margin-top:12px; box-shadow:0 0 0 1px rgba(255,255,255,.05); }
     .ticker { font-size:22px; font-weight:bold; }
     .price { float:right; color:#93c5fd; }
 
     .summary { margin-top:12px; color:#cbd5f5; line-height:1.4; }
+    .movers { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+    .pill { padding:6px 10px; border-radius:999px; border:1px solid rgba(255,255,255,.15); cursor:pointer; font-size:13px; }
+    .up{color:#22c55e;} .down{color:#ef4444;}
     .status { margin-top:20px; opacity:.7; text-align:center; }
 
-    /* Movers Panel */
-    .movers-btn {
-      position: fixed;
-      right: 16px;
-      top: 16px;
-      z-index: 50;
-      padding:10px 14px;
-      border-radius:12px;
-      background:linear-gradient(90deg,#3b82f6,#22c55e);
-      color:white;
-      cursor:pointer;
+    .watch-btn{background:#0f172a;border:1px solid rgba(255,255,255,.15);}
+    .watch-panel{
+      position:fixed;
+      top:0; right:-280px;
+      width:260px; height:100%;
+      background:#020617;
+      box-shadow:-4px 0 20px rgba(0,0,0,.5);
+      padding:16px;
+      transition:.3s;
+      z-index:10;
     }
-
-    .movers-panel {
-      position: fixed;
-      top: 0;
-      right: -320px;
-      width: 300px;
-      height: 100%;
-      background: #020617;
-      box-shadow: -4px 0 20px rgba(0,0,0,.6);
-      padding: 16px;
-      transition: right .3s ease;
-      z-index: 40;
-    }
-
-    .movers-panel.open {
-      right: 0;
-    }
-
-    .movers-panel h3 {
-      margin-top: 0;
-      margin-bottom: 12px;
-      text-align: center;
-    }
-
-    .movers {
+    .watch-panel.open{right:0;}
+    .watch-item{
       display:flex;
-      flex-wrap:wrap;
-      gap:8px;
-    }
-
-    .pill {
-      padding:6px 10px;
-      border-radius:999px;
-      border:1px solid rgba(255,255,255,.15);
+      justify-content:space-between;
+      padding:8px;
+      border-bottom:1px solid rgba(255,255,255,.1);
       cursor:pointer;
-      font-size:13px;
     }
-
-    .up{color:#22c55e;}
-    .down{color:#ef4444;}
+    .remove{color:#ef4444;font-size:12px;cursor:pointer;}
   </style>
 </head>
 <body>
 
-  <button class="movers-btn" id="toggleMovers">Top Movers</button>
-
-  <div class="movers-panel" id="moversPanel">
-    <h3>Top Movers</h3>
-    <div id="movers" class="movers"></div>
-  </div>
-
+<div class="topbar">
+  <div></div>
   <h1>AI Trading Terminal <span class="live">● Live</span></h1>
+  <button class="watch-btn" onclick="toggleWatch()">📌 Watchlist</button>
+</div>
 
-  <div class="controls">
-    <div class="search-box">
-      <input id="tickerInput" placeholder="TSLA, NVDA, BITF…" />
-      <button id="analyzeBtn">Analyze</button>
-    </div>
-
-    <div class="mode">
-      <button id="dayBtn" class="active">Day</button>
-      <button id="swingBtn">Swing</button>
-    </div>
+<div class="controls">
+  <div class="search-box">
+    <input id="tickerInput" placeholder="TSLA, NVDA, BITF…" />
+    <button id="analyzeBtn">Analyze</button>
   </div>
 
-  <div id="result"></div>
-  <div class="status" id="status"></div>
+  <div class="mode">
+    <button id="dayBtn" class="active">Day</button>
+    <button id="swingBtn">Swing</button>
+  </div>
+</div>
 
-  <script>
-    const API = "https://ai-market-backend.onrender.com";
+<div id="result"></div>
 
-    const tickerInput = document.getElementById("tickerInput");
-    const analyzeBtn = document.getElementById("analyzeBtn");
-    const dayBtn = document.getElementById("dayBtn");
-    const swingBtn = document.getElementById("swingBtn");
-    const statusEl = document.getElementById("status");
-    const resultEl = document.getElementById("result");
-    const moversEl = document.getElementById("movers");
+<div class="card">
+  <strong>Top Movers</strong>
+  <div id="movers" class="movers"></div>
+</div>
 
-    const moversPanel = document.getElementById("moversPanel");
-    const toggleMovers = document.getElementById("toggleMovers");
+<div class="status" id="status"></div>
 
-    let mode = "day";
+<div id="watchPanel" class="watch-panel">
+  <h3>Your Watchlist</h3>
+  <div id="watchItems"></div>
+</div>
 
-    function setMode(m){
-      mode = m;
-      dayBtn.classList.toggle("active", m==="day");
-      swingBtn.classList.toggle("active", m==="swing");
-    }
+<script>
+const API = "https://ai-market-backend.onrender.com";
 
-    toggleMovers.onclick = () => {
-      moversPanel.classList.toggle("open");
-    };
+const tickerInput = document.getElementById("tickerInput");
+const analyzeBtn = document.getElementById("analyzeBtn");
+const dayBtn = document.getElementById("dayBtn");
+const swingBtn = document.getElementById("swingBtn");
+const statusEl = document.getElementById("status");
+const resultEl = document.getElementById("result");
+const moversEl = document.getElementById("movers");
+const watchPanel = document.getElementById("watchPanel");
+const watchItems = document.getElementById("watchItems");
 
-    async function analyze(sym){
-      const ticker = (sym || tickerInput.value.trim()).toUpperCase();
-      if(!ticker) return;
+let mode = "day";
+let lastTicker = "";
 
-      statusEl.textContent = "Analyzing…";
-      resultEl.innerHTML = "";
+function toggleWatch(){
+  watchPanel.classList.toggle("open");
+  renderWatchlist();
+}
 
-      try{
-        const r = await fetch(`${API}/analyze?ticker=${encodeURIComponent(ticker)}&mode=${mode}`);
-        const d = await r.json();
+function getWatchlist(){
+  return JSON.parse(localStorage.getItem("watchlist") || "[]");
+}
+function saveWatchlist(list){
+  localStorage.setItem("watchlist", JSON.stringify(list));
+}
+function addWatch(t){
+  const w = getWatchlist();
+  if(!w.includes(t)){
+    w.push(t);
+    saveWatchlist(w);
+    renderWatchlist();
+  }
+}
+function removeWatch(t){
+  const w = getWatchlist().filter(x=>x!==t);
+  saveWatchlist(w);
+  renderWatchlist();
+}
+function renderWatchlist(){
+  const w = getWatchlist();
+  watchItems.innerHTML = "";
+  w.forEach(t=>{
+    const d = document.createElement("div");
+    d.className="watch-item";
+    d.innerHTML = `<span>${t}</span><span class="remove">✖</span>`;
+    d.onclick = ()=> analyze(t);
+    d.querySelector(".remove").onclick = (e)=>{e.stopPropagation();removeWatch(t);};
+    watchItems.appendChild(d);
+  });
+}
 
-        if(d.error){
-          statusEl.textContent = d.error;
-          return;
-        }
+function setMode(m){
+  mode = m;
+  dayBtn.classList.toggle("active", m==="day");
+  swingBtn.classList.toggle("active", m==="swing");
+}
 
-        const levels = d.levels || {};
-        const plan = d.plan || {};
-        const targets = Array.isArray(plan.targets) ? plan.targets : [];
-        const risks = Array.isArray(d.risk_notes) ? d.risk_notes : [];
+async function analyze(sym){
+  const ticker = (sym || tickerInput.value.trim()).toUpperCase();
+  if(!ticker) return;
 
-        resultEl.innerHTML = `
-          <div class="card">
-            <div class="ticker">
-              ${d.ticker}
-              <span class="price">$${d.price ?? ""}</span>
-            </div>
+  lastTicker = ticker;
+  statusEl.textContent = "Analyzing…";
+  resultEl.innerHTML = "";
 
-            <div class="summary">
-              <strong>Bias:</strong> ${d.bias || "Neutral"}<br/>
-              <strong>Trend:</strong> ${d.trend || "—"}<br/><br/>
+  const r = await fetch(`${API}/analyze?ticker=${ticker}&mode=${mode}`);
+  const d = await r.json();
 
-              <strong>Key Levels</strong><br/>
-              Support: ${levels.support || "—"}<br/>
-              Resistance: ${levels.resistance || "—"}<br/><br/>
+  const levels = d.levels || {};
+  const plan = d.plan || {};
+  const targets = Array.isArray(plan.targets) ? plan.targets : [];
+  const risks = Array.isArray(d.risk_notes) ? d.risk_notes : [];
 
-              <strong>Trade Plan</strong><br/>
-              Entry: ${plan.entry || "—"}<br/>
-              Stop: ${plan.stop || "—"}<br/>
+  resultEl.innerHTML = `
+    <div class="card">
+      <div class="ticker">
+        ${d.ticker}
+        <span class="price">$${d.price ?? ""}</span>
+      </div>
 
-              ${targets.length ? `
-                Targets:
-                <ul style="margin:6px 0 6px 16px;">
-                  ${targets.map(t => `<li>${t}</li>`).join("")}
-                </ul>
-              ` : ""}
+      <button onclick="addWatch('${d.ticker}')">⭐ Add to Watchlist</button>
 
-              ${risks.length ? `
-                <strong>Risk Notes</strong>
-                <ul style="margin:6px 0 0 16px;">
-                  ${risks.map(r => `<li>${r}</li>`).join("")}
-                </ul>
-              ` : ""}
+      <div class="summary">
+        <strong>Bias:</strong> ${d.bias || "Neutral"}<br/>
+        <strong>Trend:</strong> ${d.trend || "—"}<br/><br/>
 
-              <br/>
-              ${d.summary || ""}
-            </div>
-          </div>
-        `;
+        <strong>Key Levels</strong><br/>
+        Support: ${levels.support || "—"}<br/>
+        Resistance: ${levels.resistance || "—"}<br/><br/>
 
-        statusEl.textContent = "";
-      }catch(e){
-        console.error(e);
-        statusEl.textContent = "Frontend error – check console.";
-      }
-    }
+        <strong>Trade Plan</strong><br/>
+        Entry: ${plan.entry || "—"}<br/>
+        Stop: ${plan.stop || "—"}<br/>
+        ${targets.length ? `
+          Targets:
+          <ul style="margin:6px 0 6px 16px;">
+            ${targets.map(t => `<li>${t}</li>`).join("")}
+          </ul>
+        ` : ""}
 
-    async function loadMovers(){
-      const r = await fetch(`${API}/movers`);
-      const list = await r.json();
-      moversEl.innerHTML = "";
-      list.forEach(x=>{
-        const p = document.createElement("div");
-        p.className = "pill";
-        p.innerHTML = `${x.ticker} <span class="${x.change>=0?'up':'down'}">${x.change}%</span>`;
-        p.onclick = ()=> analyze(x.ticker);
-        moversEl.appendChild(p);
-      });
-    }
+        ${risks.length ? `
+          <strong>Risk Notes</strong>
+          <ul style="margin:6px 0 0 16px;">
+            ${risks.map(r => `<li>${r}</li>`).join("")}
+          </ul>
+        ` : ""}
 
-    analyzeBtn.onclick = ()=> analyze();
-    dayBtn.onclick = ()=> setMode("day");
-    swingBtn.onclick = ()=> setMode("swing");
+        <br/>
+        ${d.summary || ""}
+      </div>
+    </div>
+  `;
 
-    loadMovers();
-  </script>
+  statusEl.textContent = "";
+}
+
+async function loadMovers(){
+  const r = await fetch(`${API}/movers`);
+  const list = await r.json();
+  moversEl.innerHTML = "";
+  list.forEach(x=>{
+    const p = document.createElement("div");
+    p.className = "pill";
+    p.innerHTML = `${x.ticker} <span class="${x.change>=0?'up':'down'}">${x.change}%</span>`;
+    p.onclick = ()=> analyze(x.ticker);
+    moversEl.appendChild(p);
+  });
+}
+
+analyzeBtn.onclick = ()=> analyze();
+dayBtn.onclick = ()=> setMode("day");
+swingBtn.onclick = ()=> setMode("swing");
+
+loadMovers();
+renderWatchlist();
+</script>
 </body>
 </html>
