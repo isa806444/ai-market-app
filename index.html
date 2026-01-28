@@ -201,6 +201,11 @@ function toggleWatch(){
   const p = document.getElementById("watchPanel");
   p.classList.toggle("open");
   renderWatchlist();
+  if(p.classList.contains("open")){
+    startWatchAutoRefresh();
+  } else {
+    stopWatchAutoRefresh();
+  }
 }
 
 function toggleMovers(){
@@ -208,6 +213,20 @@ function toggleMovers(){
   p.classList.toggle("open");
   if(p.classList.contains("open")){
     loadScanner();
+    startMoversAutoRefresh();
+  } else {
+    stopMoversAutoRefresh();
+  }
+}
+
+function startMoversAutoRefresh(){
+  stopMoversAutoRefresh();
+  moversTimer = setInterval(loadScanner, 60000);
+}
+function stopMoversAutoRefresh(){
+  if(moversTimer){
+    clearInterval(moversTimer);
+    moversTimer = null;
   }
 }
 
@@ -270,6 +289,21 @@ async function renderWatchlist(){
 
     watchItems.appendChild(row);
   }
+}
+
+function startWatchAutoRefresh(){
+  stopWatchAutoRefresh();
+  watchTimer = setInterval(renderWatchlist, 45000);
+}
+function stopWatchAutoRefresh(){
+  if(watchTimer){
+    clearInterval(watchTimer);
+    watchTimer = null;
+  }
+}
+
+async function refreshAll(){
+  await renderWatchlist();
 }
 
 async function analyze(sym){
@@ -340,6 +374,8 @@ async function loadScanner(){
 }
 
 document.getElementById("analyzeBtn").onclick = ()=> analyze();
+
+// 🔑 This was the missing boot step
 renderWatchlist();
 </script>
 </body>
