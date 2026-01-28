@@ -47,7 +47,28 @@
       border:none;
     }
 
-    .card { background:rgba(15,23,42,.7); border-radius:20px; padding:16px; margin-top:12px; box-shadow:0 0 0 1px rgba(255,255,255,.05); }
+    .card {
+      background:rgba(15,23,42,.7);
+      border-radius:20px;
+      padding:16px;
+      margin-top:12px;
+      box-shadow:0 0 0 1px rgba(255,255,255,.05);
+      border-left:4px solid transparent;
+    }
+
+    .card.scalp { border-left-color:#fb7185; }
+    .card.day { border-left-color:#60a5fa; }
+    .card.swing { border-left-color:#c084fc; }
+    .card.momentum { border-left-color:#22c55e; }
+    .card.mean { border-left-color:#f59e0b; }
+
+    .strategy-banner{
+      font-size:11px;
+      letter-spacing:.08em;
+      opacity:.85;
+      margin-bottom:6px;
+    }
+
     .ticker { font-size:22px; font-weight:bold; }
     .price { float:right; color:#93c5fd; }
 
@@ -147,26 +168,6 @@
 <div id="result"></div>
 <div class="status" id="status"></div>
 
-<div id="watchPanel" class="panel watch-panel">
-  <h3>
-    Your Watchlist
-    <span>
-      <span class="close" onclick="toggleWatch()">✖</span>
-    </span>
-  </h3>
-  <div id="watchItems"></div>
-</div>
-
-<div id="moversPanel" class="panel movers-panel">
-  <h3>
-    Top Movers
-    <span>
-      <span class="close" onclick="toggleMovers()">✖</span>
-    </span>
-  </h3>
-  <div id="movers"></div>
-</div>
-
 <script>
 const API = "https://ai-market-backend.onrender.com";
 
@@ -195,75 +196,6 @@ buttons.swing.onclick = ()=> setStrategy("swing");
 buttons.momentum.onclick = ()=> setStrategy("momentum");
 buttons.mean.onclick = ()=> setStrategy("mean");
 
-function toggleWatch(){
-  document.getElementById("watchPanel").classList.toggle("open");
-  renderWatchlist();
-}
-
-function toggleMovers(){
-  const p = document.getElementById("moversPanel");
-  p.classList.toggle("open");
-  if(p.classList.contains("open")) loadScanner();
-}
-
-function getWatchlist(){
-  return JSON.parse(localStorage.getItem("watchlist") || "[]");
-}
-function saveWatchlist(list){
-  localStorage.setItem("watchlist", JSON.stringify(list));
-}
-function addWatch(t){
-  const w = getWatchlist();
-  if(!w.includes(t)){
-    w.push(t);
-    saveWatchlist(w);
-    renderWatchlist();
-  }
-}
-function removeWatch(t){
-  const w = getWatchlist().filter(x=>x!==t);
-  saveWatchlist(w);
-  renderWatchlist();
-}
-
-async function renderWatchlist(){
-  const w = getWatchlist();
-  const el = document.getElementById("watchItems");
-  el.innerHTML = "";
-
-  for(const t of w){
-    const row = document.createElement("div");
-    row.className="watch-item";
-    row.innerHTML = `<span>${t}</span><span class="watch-meta">…</span>`;
-    row.onclick = ()=> analyze(t);
-    const meta = row.querySelector(".watch-meta");
-
-    try{
-      const r = await fetch(`${API}/analyze?ticker=${t}&strategy=${strategy}`);
-      const d = await r.json();
-      const ch = d.change ?? 0;
-      const bias = (d.bias || "Neutral").toLowerCase();
-
-      row.classList.toggle("uprow", ch>0);
-      row.classList.toggle("downrow", ch<0);
-
-      meta.innerHTML = `
-        $${d.price ?? "—"}
-        <span class="${ch>=0?'up':'down'}">${ch}%</span>
-        <span class="badge ${bias==='bullish'?'bull':bias==='bearish'?'bear':'neutral'}">${d.bias||"Neutral"}</span>
-        <span class="remove">✖</span>
-      `;
-      meta.querySelector(".remove").onclick = e=>{
-        e.stopPropagation();
-        removeWatch(t);
-      };
-    }catch{
-      meta.textContent="—";
-    }
-    el.appendChild(row);
-  }
-}
-
 async function analyze(sym){
   const ticker = (sym || document.getElementById("tickerInput").value.trim()).toUpperCase();
   if(!ticker) return;
@@ -280,14 +212,21 @@ async function analyze(sym){
   const targets = Array.isArray(plan.targets) ? plan.targets : [];
   const risks = Array.isArray(d.risk_notes) ? d.risk_notes : [];
 
+  const labels = {
+    scalp: "⚡ SCALP EXECUTION",
+    day: "📈 INTRADAY PLAN",
+    swing: "🧭 SWING THESIS",
+    momentum: "🚀 MOMENTUM RUN",
+    mean: "🔄 MEAN REVERSION"
+  };
+
   document.getElementById("result").innerHTML = `
-    <div class="card">
+    <div class="card ${strategy}">
+      <div class="strategy-banner">${labels[strategy]}</div>
       <div class="ticker">
         ${d.ticker}
         <span class="price">$${d.price ?? ""}</span>
       </div>
-
-      <button onclick="addWatch('${d.ticker}')">⭐ Add to Watchlist</button>
 
       <div class="summary">
         <strong>Bias:</strong> ${d.bias || "Neutral"}<br/>
@@ -297,7 +236,7 @@ async function analyze(sym){
         Support: ${levels.support || "N/A"}<br/>
         Resistance: ${levels.resistance || "N/A"}<br/><br/>
 
-        <strong>${strategy.toUpperCase()} Plan</strong><br/>
+        <strong>Execution</strong><br/>
         Entry: ${plan.entry || "—"}<br/>
         Stop: ${plan.stop || "—"}<br/>
         Targets: ${targets.join(", ")}<br/><br/>
@@ -307,26 +246,8 @@ async function analyze(sym){
       </div>
     </div>
   `;
-  document.getElementById("status").textContent = "";
-}
 
-async function loadScanner(){
-  const el = document.getElementById("movers");
-  el.innerHTML="Scanning…";
-  try{
-    const r = await fetch(`${API}/scanner`);
-    const d = await r.json();
-    el.innerHTML="";
-    (d.results||[]).forEach(x=>{
-      const p=document.createElement("div");
-      p.className="pill";
-      p.innerHTML=`${x.ticker} <span class="${x.change>=0?'up':'down'}">${x.change}%</span>`;
-      p.onclick=()=>analyze(x.ticker);
-      el.appendChild(p);
-    });
-  }catch{
-    el.textContent="Scanner offline.";
-  }
+  document.getElementById("status").textContent = "";
 }
 
 document.getElementById("analyzeBtn").onclick = ()=> analyze();
