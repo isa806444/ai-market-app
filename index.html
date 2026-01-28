@@ -147,34 +147,11 @@
 <div id="result"></div>
 <div class="status" id="status"></div>
 
-<div id="watchPanel" class="panel watch-panel">
-  <h3>
-    Your Watchlist
-    <span>
-      <button style="padding:4px 8px;font-size:11px" onclick="refreshAll()">⟳</button>
-      <span class="close" onclick="toggleWatch()">✖</span>
-    </span>
-  </h3>
-  <div id="watchItems"></div>
-</div>
-
-<div id="moversPanel" class="panel movers-panel">
-  <h3>
-    Top Movers
-    <span>
-      <button style="padding:4px 8px;font-size:11px" onclick="loadScanner()">⟳</button>
-      <span class="close" onclick="toggleMovers()">✖</span>
-    </span>
-  </h3>
-  <div id="movers"></div>
-</div>
-
 <script>
 const API = "https://ai-market-backend.onrender.com";
 
 let strategy = "day";
-let watchTimer = null;
-let moversTimer = null;
+let lastTicker = null;
 
 const buttons = {
   scalp: document.getElementById("scalpBtn"),
@@ -189,6 +166,10 @@ function setStrategy(s){
   Object.keys(buttons).forEach(k=>{
     buttons[k].classList.toggle("active", k===s);
   });
+
+  if(lastTicker){
+    analyze(lastTicker);
+  }
 }
 
 buttons.scalp.onclick = ()=> setStrategy("scalp");
@@ -197,118 +178,11 @@ buttons.swing.onclick = ()=> setStrategy("swing");
 buttons.momentum.onclick = ()=> setStrategy("momentum");
 buttons.mean.onclick = ()=> setStrategy("mean");
 
-function toggleWatch(){
-  const p = document.getElementById("watchPanel");
-  p.classList.toggle("open");
-  renderWatchlist();
-  if(p.classList.contains("open")){
-    startWatchAutoRefresh();
-  } else {
-    stopWatchAutoRefresh();
-  }
-}
-
-function toggleMovers(){
-  const p = document.getElementById("moversPanel");
-  p.classList.toggle("open");
-  if(p.classList.contains("open")){
-    loadScanner();
-    startMoversAutoRefresh();
-  } else {
-    stopMoversAutoRefresh();
-  }
-}
-
-function startMoversAutoRefresh(){
-  stopMoversAutoRefresh();
-  moversTimer = setInterval(loadScanner, 60000);
-}
-function stopMoversAutoRefresh(){
-  if(moversTimer){
-    clearInterval(moversTimer);
-    moversTimer = null;
-  }
-}
-
-function getWatchlist(){
-  return JSON.parse(localStorage.getItem("watchlist") || "[]");
-}
-function saveWatchlist(list){
-  localStorage.setItem("watchlist", JSON.stringify(list));
-}
-function addWatch(t){
-  const w = getWatchlist();
-  if(!w.includes(t)){
-    w.push(t);
-    saveWatchlist(w);
-    renderWatchlist();
-  }
-}
-function removeWatch(t){
-  const w = getWatchlist().filter(x=>x!==t);
-  saveWatchlist(w);
-  renderWatchlist();
-}
-
-async function renderWatchlist(){
-  const w = getWatchlist();
-  const watchItems = document.getElementById("watchItems");
-  watchItems.innerHTML = "";
-
-  for(const t of w){
-    const row = document.createElement("div");
-    row.className="watch-item";
-    row.innerHTML = `<span>${t}</span><span class="watch-meta">…</span>`;
-    row.onclick = ()=> analyze(t);
-
-    const meta = row.querySelector(".watch-meta");
-
-    try{
-      const r = await fetch(`${API}/analyze?ticker=${t}&strategy=${strategy}`);
-      const d = await r.json();
-      const ch = d.change ?? 0;
-      const bias = (d.bias || "Neutral").toLowerCase();
-
-      row.classList.toggle("uprow", ch > 0);
-      row.classList.toggle("downrow", ch < 0);
-
-      meta.innerHTML = `
-        $${d.price ?? "—"} 
-        <span class="${ch>=0?'up':'down'}">${ch}%</span>
-        <span class="badge ${bias==='bullish'?'bull':bias==='bearish'?'bear':'neutral'}">${d.bias || "Neutral"}</span>
-        <span class="remove">✖</span>
-      `;
-
-      meta.querySelector(".remove").onclick = (e)=>{
-        e.stopPropagation();
-        removeWatch(t);
-      };
-    }catch{
-      meta.textContent = "—";
-    }
-
-    watchItems.appendChild(row);
-  }
-}
-
-function startWatchAutoRefresh(){
-  stopWatchAutoRefresh();
-  watchTimer = setInterval(renderWatchlist, 45000);
-}
-function stopWatchAutoRefresh(){
-  if(watchTimer){
-    clearInterval(watchTimer);
-    watchTimer = null;
-  }
-}
-
-async function refreshAll(){
-  await renderWatchlist();
-}
-
 async function analyze(sym){
   const ticker = (sym || document.getElementById("tickerInput").value.trim()).toUpperCase();
   if(!ticker) return;
+
+  lastTicker = ticker;
 
   document.getElementById("status").textContent = "Analyzing…";
   document.getElementById("result").innerHTML = "";
@@ -328,23 +202,21 @@ async function analyze(sym){
         <span class="price">$${d.price ?? ""}</span>
       </div>
 
-      <button onclick="addWatch('${d.ticker}')">⭐ Add to Watchlist</button>
-
       <div class="summary">
         <strong>Bias:</strong> ${d.bias || "Neutral"}<br/>
-        <strong>Trend:</strong> ${d.trend || "—"}<br/><br/>
+        <strong>Trend:</strong> ${d.trend || "Unknown"}<br/><br/>
 
         <strong>Key Levels</strong><br/>
-        Support: ${levels.support || "—"}<br/>
-        Resistance: ${levels.resistance || "—"}<br/><br/>
+        Support: ${levels.support || "N/A"}<br/>
+        Resistance: ${levels.resistance || "N/A"}<br/><br/>
 
-        <strong>Trade Plan</strong><br/>
+        <strong>${strategy.toUpperCase()} Plan</strong><br/>
         Entry: ${plan.entry || "—"}<br/>
         Stop: ${plan.stop || "—"}<br/>
-        ${targets.length ? `<ul>${targets.map(t=>`<li>${t}</li>`).join("")}</ul>` : ""}
-        ${risks.length ? `<ul>${risks.map(r=>`<li>${r}</li>`).join("")}</ul>` : ""}
+        Targets: ${targets.join(", ")}<br/><br/>
 
-        <br/>${d.summary || ""}
+        ${risks.map(x => `• ${x}`).join("<br/>")}<br/><br/>
+        ${d.summary || ""}
       </div>
     </div>
   `;
@@ -352,31 +224,7 @@ async function analyze(sym){
   document.getElementById("status").textContent = "";
 }
 
-async function loadScanner(){
-  const moversEl = document.getElementById("movers");
-  moversEl.innerHTML = "Scanning…";
-  try{
-    const r = await fetch(`${API}/scanner`);
-    const d = await r.json();
-    const list = d.results || [];
-
-    moversEl.innerHTML = "";
-    list.forEach(x=>{
-      const p = document.createElement("div");
-      p.className = "pill";
-      p.innerHTML = `${x.ticker} <span class="${x.change>=0?'up':'down'}">${x.change}%</span>`;
-      p.onclick = ()=> analyze(x.ticker);
-      moversEl.appendChild(p);
-    });
-  }catch{
-    moversEl.innerHTML = "Scanner offline.";
-  }
-}
-
 document.getElementById("analyzeBtn").onclick = ()=> analyze();
-
-// 🔑 This was the missing boot step
-renderWatchlist();
 </script>
 </body>
 </html>
