@@ -22,7 +22,6 @@
       justify-content:space-between;
       align-items:center;
       margin-bottom:16px;
-      gap:8px;
     }
 
     .controls{
@@ -71,6 +70,7 @@
       justify-content:space-between;
       align-items:center;
       margin-top:0;
+      gap:6px;
     }
 
     .close{ cursor:pointer; opacity:.6; }
@@ -79,11 +79,20 @@
     .watch-item{
       display:flex;
       justify-content:space-between;
+      align-items:center;
       padding:8px;
       border-bottom:1px solid rgba(255,255,255,.1);
       cursor:pointer;
+      font-size:13px;
     }
-    .remove{color:#ef4444;font-size:12px;cursor:pointer;}
+
+    .watch-meta{
+      text-align:right;
+      font-size:12px;
+      opacity:.85;
+    }
+
+    .remove{color:#ef4444;font-size:12px;cursor:pointer;margin-left:6px;}
   </style>
 </head>
 <body>
@@ -91,10 +100,7 @@
 <div class="topbar">
   <button onclick="toggleMovers()">📊 Movers</button>
   <h1>AI Trading Terminal <span class="live">● Live</span></h1>
-  <div style="display:flex; gap:8px;">
-    <button onclick="manualRefresh()">🔄 Refresh</button>
-    <button onclick="toggleWatch()">📌 Watchlist</button>
-  </div>
+  <button onclick="toggleWatch()">📌 Watchlist</button>
 </div>
 
 <div class="controls">
@@ -113,7 +119,13 @@
 <div class="status" id="status"></div>
 
 <div id="watchPanel" class="panel watch-panel">
-  <h3>Your Watchlist <span class="close" onclick="toggleWatch()">✖</span></h3>
+  <h3>
+    Your Watchlist
+    <span>
+      <button style="padding:4px 8px;font-size:11px" onclick="refreshAll()">⟳</button>
+      <span class="close" onclick="toggleWatch()">✖</span>
+    </span>
+  </h3>
   <div id="watchItems"></div>
 </div>
 
@@ -137,21 +149,9 @@ const moversPanel = document.getElementById("moversPanel");
 const watchItems = document.getElementById("watchItems");
 
 let mode = "day";
-let lastTicker = "";
 
-function toggleWatch(){ watchPanel.classList.toggle("open"); }
+function toggleWatch(){ watchPanel.classList.toggle("open"); renderWatchlist(); }
 function toggleMovers(){ moversPanel.classList.toggle("open"); }
-
-function manualRefresh(){
-  statusEl.textContent = "Refreshing…";
-  loadMovers();
-
-  if(lastTicker){
-    analyze(lastTicker);
-  } else {
-    statusEl.textContent = "Data refreshed.";
-  }
-}
 
 function getWatchlist(){
   return JSON.parse(localStorage.getItem("watchlist") || "[]");
@@ -172,17 +172,45 @@ function removeWatch(t){
   saveWatchlist(w);
   renderWatchlist();
 }
-function renderWatchlist(){
+
+async function renderWatchlist(){
   const w = getWatchlist();
   watchItems.innerHTML = "";
-  w.forEach(t=>{
-    const d = document.createElement("div");
-    d.className="watch-item";
-    d.innerHTML = `<span>${t}</span><span class="remove">✖</span>`;
-    d.onclick = ()=> analyze(t);
-    d.querySelector(".remove").onclick = (e)=>{e.stopPropagation();removeWatch(t);};
-    watchItems.appendChild(d);
-  });
+
+  for(const t of w){
+    const row = document.createElement("div");
+    row.className="watch-item";
+    row.innerHTML = `
+      <span>${t}</span>
+      <span class="watch-meta">…</span>
+    `;
+    row.onclick = ()=> analyze(t);
+
+    const meta = row.querySelector(".watch-meta");
+
+    try{
+      const r = await fetch(`${API}/analyze?ticker=${t}&mode=${mode}`);
+      const d = await r.json();
+      const ch = d.change ?? 0;
+      meta.innerHTML = `
+        $${d.price ?? "—"} 
+        <span class="${ch>=0?'up':'down'}">${ch}%</span>
+        <span class="remove">✖</span>
+      `;
+      meta.querySelector(".remove").onclick = (e)=>{
+        e.stopPropagation();
+        removeWatch(t);
+      };
+    }catch{
+      meta.textContent = "—";
+    }
+
+    watchItems.appendChild(row);
+  }
+}
+
+async function refreshAll(){
+  await renderWatchlist();
 }
 
 function setMode(m){
@@ -195,7 +223,6 @@ async function analyze(sym){
   const ticker = (sym || tickerInput.value.trim()).toUpperCase();
   if(!ticker) return;
 
-  lastTicker = ticker;
   statusEl.textContent = "Analyzing…";
   resultEl.innerHTML = "";
 
