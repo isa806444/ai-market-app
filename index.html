@@ -32,7 +32,7 @@
 
     .search-box { display:flex; gap:10px; margin-bottom:10px; }
     input { flex:1; padding:10px; border-radius:10px; border:none; font-size:14px; }
-    button { padding:10px 14px; border-radius:10px; border:none; font-size:14px; background:linear-gradient(90deg,#3b82f6,#22c55e); color:white; cursor:pointer; }
+    button { padding:10px 14px; border-radius:10px; border:none; font-size:14px; cursor:pointer; color:white; }
 
     .strategy { display:flex; gap:8px; margin-bottom:8px; }
     .strategy button {
@@ -40,16 +40,29 @@
       background:#0f172a;
       color:#cbd5f5;
       border:1px solid rgba(255,255,255,0.1);
+      transition:.2s;
     }
-    .strategy .active {
-      background:linear-gradient(90deg,#3b82f6,#22c55e);
-      color:white;
-      border:none;
-    }
+
+    .strategy .active { color:white; border:none; }
+
+    .scalp.active { background:linear-gradient(90deg,#22c55e,#4ade80); box-shadow:0 0 12px rgba(34,197,94,.6); }
+    .day.active   { background:linear-gradient(90deg,#3b82f6,#60a5fa); box-shadow:0 0 12px rgba(59,130,246,.6); }
+    .swing.active { background:linear-gradient(90deg,#a855f7,#d946ef); box-shadow:0 0 12px rgba(168,85,247,.6); }
+    .momentum.active { background:linear-gradient(90deg,#f59e0b,#facc15); box-shadow:0 0 12px rgba(245,158,11,.6); }
+    .mean.active  { background:linear-gradient(90deg,#ef4444,#f87171); box-shadow:0 0 12px rgba(239,68,68,.6); }
 
     .card { background:rgba(15,23,42,.7); border-radius:20px; padding:16px; margin-top:12px; box-shadow:0 0 0 1px rgba(255,255,255,.05); }
     .ticker { font-size:22px; font-weight:bold; }
     .price { float:right; color:#93c5fd; }
+
+    .mode-banner{
+      margin-top:8px;
+      font-size:13px;
+      opacity:.85;
+      padding:6px 10px;
+      border-radius:8px;
+      display:inline-block;
+    }
 
     .summary { margin-top:12px; color:#cbd5f5; line-height:1.4; }
     .pill { padding:6px 10px; border-radius:999px; border:1px solid rgba(255,255,255,.15); cursor:pointer; font-size:13px; }
@@ -93,7 +106,6 @@
       border-bottom:1px solid rgba(255,255,255,.1);
       cursor:pointer;
       font-size:13px;
-      transition: background .2s;
     }
 
     .watch-item.uprow{ background:rgba(34,197,94,.08); }
@@ -112,8 +124,8 @@
       border-radius:6px;
       font-size:10px;
       margin-left:4px;
-      opacity:.9;
     }
+
     .bull{ background:#14532d; color:#22c55e; }
     .bear{ background:#7f1d1d; color:#ef4444; }
     .neutral{ background:#1e293b; color:#cbd5f5; }
@@ -136,11 +148,11 @@
   </div>
 
   <div class="strategy">
-    <button id="scalpBtn">Scalp</button>
-    <button id="dayBtn" class="active">Day</button>
-    <button id="swingBtn">Swing</button>
-    <button id="momBtn">Momentum</button>
-    <button id="meanBtn">Mean</button>
+    <button id="scalpBtn" class="scalp">Scalp</button>
+    <button id="dayBtn" class="day active">Day</button>
+    <button id="swingBtn" class="swing">Swing</button>
+    <button id="momBtn" class="momentum">Momentum</button>
+    <button id="meanBtn" class="mean">Mean</button>
   </div>
 </div>
 
@@ -171,6 +183,14 @@ const buttons = {
   mean: document.getElementById("meanBtn")
 };
 
+const modeCopy = {
+  scalp: "High-speed micro moves. Tight stops. Rapid exits.",
+  day: "Intraday structure. Trend + momentum balance.",
+  swing: "Multi-day positioning. Wider stops. Larger targets.",
+  momentum: "Breakouts and continuation. Ride strength.",
+  mean: "Fade extremes. Reversion to equilibrium."
+};
+
 function setStrategy(s){
   strategy = s;
   Object.keys(buttons).forEach(k=>{
@@ -186,9 +206,8 @@ buttons.momentum.onclick = ()=> setStrategy("momentum");
 buttons.mean.onclick = ()=> setStrategy("mean");
 
 function toggleWatch(){
-  const p = document.getElementById("watchPanel");
-  p.classList.toggle("open");
-  if(p.classList.contains("open")) renderWatchlist();
+  document.getElementById("watchPanel").classList.toggle("open");
+  renderWatchlist();
 }
 
 function toggleMovers(){
@@ -227,8 +246,8 @@ async function renderWatchlist(){
     row.className="watch-item";
     row.innerHTML = `<span>${t}</span><span class="watch-meta">…</span>`;
     row.onclick = ()=> analyze(t);
-
     const meta = row.querySelector(".watch-meta");
+
     try{
       const r = await fetch(`${API}/analyze?ticker=${t}&strategy=${strategy}`);
       const d = await r.json();
@@ -278,6 +297,8 @@ async function analyze(sym){
         <span class="price">$${d.price ?? ""}</span>
       </div>
 
+      <div class="mode-banner">${strategy.toUpperCase()} — ${modeCopy[strategy]}</div>
+
       <button onclick="addWatch('${d.ticker}')">⭐ Add to Watchlist</button>
 
       <div class="summary">
@@ -288,7 +309,7 @@ async function analyze(sym){
         Support: ${levels.support || "N/A"}<br/>
         Resistance: ${levels.resistance || "N/A"}<br/><br/>
 
-        <strong>${strategy.toUpperCase()} Plan</strong><br/>
+        <strong>Trade Plan</strong><br/>
         Entry: ${plan.entry || "—"}<br/>
         Stop: ${plan.stop || "—"}<br/>
         Targets: ${targets.join(", ")}<br/><br/>
