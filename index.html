@@ -22,6 +22,7 @@
       justify-content:space-between;
       align-items:center;
       margin-bottom:16px;
+      gap:8px;
     }
 
     .controls{
@@ -90,7 +91,10 @@
 <div class="topbar">
   <button onclick="toggleMovers()">📊 Movers</button>
   <h1>AI Trading Terminal <span class="live">● Live</span></h1>
-  <button onclick="toggleWatch()">📌 Watchlist</button>
+  <div style="display:flex; gap:8px;">
+    <button onclick="manualRefresh()">🔄 Refresh</button>
+    <button onclick="toggleWatch()">📌 Watchlist</button>
+  </div>
 </div>
 
 <div class="controls">
@@ -133,9 +137,21 @@ const moversPanel = document.getElementById("moversPanel");
 const watchItems = document.getElementById("watchItems");
 
 let mode = "day";
+let lastTicker = "";
 
 function toggleWatch(){ watchPanel.classList.toggle("open"); }
 function toggleMovers(){ moversPanel.classList.toggle("open"); }
+
+function manualRefresh(){
+  statusEl.textContent = "Refreshing…";
+  loadMovers();
+
+  if(lastTicker){
+    analyze(lastTicker);
+  } else {
+    statusEl.textContent = "Data refreshed.";
+  }
+}
 
 function getWatchlist(){
   return JSON.parse(localStorage.getItem("watchlist") || "[]");
@@ -179,6 +195,7 @@ async function analyze(sym){
   const ticker = (sym || tickerInput.value.trim()).toUpperCase();
   if(!ticker) return;
 
+  lastTicker = ticker;
   statusEl.textContent = "Analyzing…";
   resultEl.innerHTML = "";
 
