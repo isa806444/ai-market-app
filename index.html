@@ -147,7 +147,13 @@
 </div>
 
 <div id="moversPanel" class="panel movers-panel">
-  <h3>Top Movers <span class="close" onclick="toggleMovers()">✖</span></h3>
+  <h3>
+    Top Movers
+    <span>
+      <button style="padding:4px 8px;font-size:11px" onclick="loadScanner()">⟳</button>
+      <span class="close" onclick="toggleMovers()">✖</span>
+    </span>
+  </h3>
   <div id="movers"></div>
 </div>
 
@@ -167,6 +173,7 @@ const watchItems = document.getElementById("watchItems");
 
 let mode = "day";
 let watchTimer = null;
+let moversTimer = null;
 
 function toggleWatch(){
   watchPanel.classList.toggle("open");
@@ -177,7 +184,27 @@ function toggleWatch(){
     stopWatchAutoRefresh();
   }
 }
-function toggleMovers(){ moversPanel.classList.toggle("open"); }
+
+function toggleMovers(){
+  moversPanel.classList.toggle("open");
+  if(moversPanel.classList.contains("open")){
+    loadScanner();
+    startMoversAutoRefresh();
+  } else {
+    stopMoversAutoRefresh();
+  }
+}
+
+function startMoversAutoRefresh(){
+  stopMoversAutoRefresh();
+  moversTimer = setInterval(loadScanner, 60000);
+}
+function stopMoversAutoRefresh(){
+  if(moversTimer){
+    clearInterval(moversTimer);
+    moversTimer = null;
+  }
+}
 
 function getWatchlist(){
   return JSON.parse(localStorage.getItem("watchlist") || "[]");
@@ -309,24 +336,30 @@ async function analyze(sym){
   statusEl.textContent = "";
 }
 
-async function loadMovers(){
-  const r = await fetch(`${API}/movers`);
-  const list = await r.json();
-  moversEl.innerHTML = "";
-  list.forEach(x=>{
-    const p = document.createElement("div");
-    p.className = "pill";
-    p.innerHTML = `${x.ticker} <span class="${x.change>=0?'up':'down'}">${x.change}%</span>`;
-    p.onclick = ()=> analyze(x.ticker);
-    moversEl.appendChild(p);
-  });
+async function loadScanner(){
+  moversEl.innerHTML = "Scanning…";
+  try{
+    const r = await fetch(`${API}/scanner`);
+    const d = await r.json();
+    const list = d.results || [];
+
+    moversEl.innerHTML = "";
+    list.forEach(x=>{
+      const p = document.createElement("div");
+      p.className = "pill";
+      p.innerHTML = `${x.ticker} <span class="${x.change>=0?'up':'down'}">${x.change}%</span>`;
+      p.onclick = ()=> analyze(x.ticker);
+      moversEl.appendChild(p);
+    });
+  }catch{
+    moversEl.innerHTML = "Scanner offline.";
+  }
 }
 
 analyzeBtn.onclick = ()=> analyze();
 dayBtn.onclick = ()=> setMode("day");
 swingBtn.onclick = ()=> setMode("swing");
 
-loadMovers();
 renderWatchlist();
 </script>
 </body>
