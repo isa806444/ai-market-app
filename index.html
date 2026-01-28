@@ -43,23 +43,38 @@
     .price { float:right; color:#93c5fd; }
 
     .summary { margin-top:12px; color:#cbd5f5; line-height:1.4; }
-    .movers { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
     .pill { padding:6px 10px; border-radius:999px; border:1px solid rgba(255,255,255,.15); cursor:pointer; font-size:13px; }
     .up{color:#22c55e;} .down{color:#ef4444;}
     .status { margin-top:20px; opacity:.7; text-align:center; }
 
-    .watch-btn{background:#0f172a;border:1px solid rgba(255,255,255,.15);}
-    .watch-panel{
+    .panel{
       position:fixed;
-      top:0; right:-280px;
-      width:260px; height:100%;
+      top:0;
+      width:260px;
+      height:100%;
       background:#020617;
-      box-shadow:-4px 0 20px rgba(0,0,0,.5);
+      box-shadow:0 0 20px rgba(0,0,0,.6);
       padding:16px;
       transition:.3s;
       z-index:10;
     }
-    .watch-panel.open{right:0;}
+
+    .watch-panel{ right:-280px; }
+    .watch-panel.open{ right:0; }
+
+    .movers-panel{ left:-280px; }
+    .movers-panel.open{ left:0; }
+
+    .panel h3{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-top:0;
+    }
+
+    .close{ cursor:pointer; opacity:.6; }
+    .close:hover{ opacity:1; }
+
     .watch-item{
       display:flex;
       justify-content:space-between;
@@ -73,9 +88,9 @@
 <body>
 
 <div class="topbar">
-  <div></div>
+  <button onclick="toggleMovers()">📊 Movers</button>
   <h1>AI Trading Terminal <span class="live">● Live</span></h1>
-  <button class="watch-btn" onclick="toggleWatch()">📌 Watchlist</button>
+  <button onclick="toggleWatch()">📌 Watchlist</button>
 </div>
 
 <div class="controls">
@@ -91,17 +106,16 @@
 </div>
 
 <div id="result"></div>
-
-<div class="card">
-  <strong>Top Movers</strong>
-  <div id="movers" class="movers"></div>
-</div>
-
 <div class="status" id="status"></div>
 
-<div id="watchPanel" class="watch-panel">
-  <h3>Your Watchlist</h3>
+<div id="watchPanel" class="panel watch-panel">
+  <h3>Your Watchlist <span class="close" onclick="toggleWatch()">✖</span></h3>
   <div id="watchItems"></div>
+</div>
+
+<div id="moversPanel" class="panel movers-panel">
+  <h3>Top Movers <span class="close" onclick="toggleMovers()">✖</span></h3>
+  <div id="movers"></div>
 </div>
 
 <script>
@@ -115,15 +129,13 @@ const statusEl = document.getElementById("status");
 const resultEl = document.getElementById("result");
 const moversEl = document.getElementById("movers");
 const watchPanel = document.getElementById("watchPanel");
+const moversPanel = document.getElementById("moversPanel");
 const watchItems = document.getElementById("watchItems");
 
 let mode = "day";
-let lastTicker = "";
 
-function toggleWatch(){
-  watchPanel.classList.toggle("open");
-  renderWatchlist();
-}
+function toggleWatch(){ watchPanel.classList.toggle("open"); }
+function toggleMovers(){ moversPanel.classList.toggle("open"); }
 
 function getWatchlist(){
   return JSON.parse(localStorage.getItem("watchlist") || "[]");
@@ -167,7 +179,6 @@ async function analyze(sym){
   const ticker = (sym || tickerInput.value.trim()).toUpperCase();
   if(!ticker) return;
 
-  lastTicker = ticker;
   statusEl.textContent = "Analyzing…";
   resultEl.innerHTML = "";
 
@@ -199,22 +210,10 @@ async function analyze(sym){
         <strong>Trade Plan</strong><br/>
         Entry: ${plan.entry || "—"}<br/>
         Stop: ${plan.stop || "—"}<br/>
-        ${targets.length ? `
-          Targets:
-          <ul style="margin:6px 0 6px 16px;">
-            ${targets.map(t => `<li>${t}</li>`).join("")}
-          </ul>
-        ` : ""}
+        ${targets.length ? `<ul>${targets.map(t=>`<li>${t}</li>`).join("")}</ul>` : ""}
+        ${risks.length ? `<ul>${risks.map(r=>`<li>${r}</li>`).join("")}</ul>` : ""}
 
-        ${risks.length ? `
-          <strong>Risk Notes</strong>
-          <ul style="margin:6px 0 0 16px;">
-            ${risks.map(r => `<li>${r}</li>`).join("")}
-          </ul>
-        ` : ""}
-
-        <br/>
-        ${d.summary || ""}
+        <br/>${d.summary || ""}
       </div>
     </div>
   `;
