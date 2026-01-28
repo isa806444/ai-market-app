@@ -174,6 +174,8 @@ const API = "https://ai-market-backend.onrender.com";
 
 let strategy = "day";
 let lastTicker = null;
+let watchTimer = null;
+let moversTimer = null;
 
 const buttons = {
   scalp: document.getElementById("scalpBtn"),
@@ -206,14 +208,47 @@ buttons.momentum.onclick = ()=> setStrategy("momentum");
 buttons.mean.onclick = ()=> setStrategy("mean");
 
 function toggleWatch(){
-  document.getElementById("watchPanel").classList.toggle("open");
+  const p = document.getElementById("watchPanel");
+  p.classList.toggle("open");
   renderWatchlist();
+  if(p.classList.contains("open")){
+    startWatchAutoRefresh();
+  } else {
+    stopWatchAutoRefresh();
+  }
 }
 
 function toggleMovers(){
   const p = document.getElementById("moversPanel");
   p.classList.toggle("open");
-  if(p.classList.contains("open")) loadScanner();
+  if(p.classList.contains("open")){
+    loadScanner();
+    startMoversAutoRefresh();
+  } else {
+    stopMoversAutoRefresh();
+  }
+}
+
+function startWatchAutoRefresh(){
+  stopWatchAutoRefresh();
+  watchTimer = setInterval(renderWatchlist, 45000);
+}
+function stopWatchAutoRefresh(){
+  if(watchTimer){
+    clearInterval(watchTimer);
+    watchTimer = null;
+  }
+}
+
+function startMoversAutoRefresh(){
+  stopMoversAutoRefresh();
+  moversTimer = setInterval(loadScanner, 60000);
+}
+function stopMoversAutoRefresh(){
+  if(moversTimer){
+    clearInterval(moversTimer);
+    moversTimer = null;
+  }
 }
 
 function getWatchlist(){
@@ -342,6 +377,9 @@ async function loadScanner(){
 }
 
 document.getElementById("analyzeBtn").onclick = ()=> analyze();
+
+// boot
+renderWatchlist();
 </script>
 </body>
 </html>
