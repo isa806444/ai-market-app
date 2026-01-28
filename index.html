@@ -25,7 +25,7 @@
     }
 
     .controls{
-      max-width:600px;
+      max-width:700px;
       margin:0 auto 16px auto;
       text-align:center;
     }
@@ -34,9 +34,18 @@
     input { flex:1; padding:10px; border-radius:10px; border:none; font-size:14px; }
     button { padding:10px 14px; border-radius:10px; border:none; font-size:14px; background:linear-gradient(90deg,#3b82f6,#22c55e); color:white; cursor:pointer; }
 
-    .mode { display:flex; gap:10px; }
-    .mode button { flex:1; background:#0f172a; color:#cbd5f5; border:1px solid rgba(255,255,255,0.1); }
-    .mode .active { background:linear-gradient(90deg,#3b82f6,#22c55e); color:white; border:none; }
+    .mode, .strategy { display:flex; gap:8px; margin-bottom:8px; }
+    .mode button, .strategy button {
+      flex:1;
+      background:#0f172a;
+      color:#cbd5f5;
+      border:1px solid rgba(255,255,255,0.1);
+    }
+    .mode .active, .strategy .active {
+      background:linear-gradient(90deg,#3b82f6,#22c55e);
+      color:white;
+      border:none;
+    }
 
     .card { background:rgba(15,23,42,.7); border-radius:20px; padding:16px; margin-top:12px; box-shadow:0 0 0 1px rgba(255,255,255,.05); }
     .ticker { font-size:22px; font-weight:bold; }
@@ -126,9 +135,12 @@
     <button id="analyzeBtn">Analyze</button>
   </div>
 
-  <div class="mode">
+  <div class="strategy">
+    <button id="scalpBtn">Scalp</button>
     <button id="dayBtn" class="active">Day</button>
     <button id="swingBtn">Swing</button>
+    <button id="momBtn">Momentum</button>
+    <button id="meanBtn">Mean</button>
   </div>
 </div>
 
@@ -160,207 +172,52 @@
 <script>
 const API = "https://ai-market-backend.onrender.com";
 
-const tickerInput = document.getElementById("tickerInput");
-const analyzeBtn = document.getElementById("analyzeBtn");
-const dayBtn = document.getElementById("dayBtn");
-const swingBtn = document.getElementById("swingBtn");
-const statusEl = document.getElementById("status");
-const resultEl = document.getElementById("result");
-const moversEl = document.getElementById("movers");
-const watchPanel = document.getElementById("watchPanel");
-const moversPanel = document.getElementById("moversPanel");
-const watchItems = document.getElementById("watchItems");
+let strategy = "day";
 
-let mode = "day";
-let watchTimer = null;
-let moversTimer = null;
+const buttons = {
+  scalp: document.getElementById("scalpBtn"),
+  day: document.getElementById("dayBtn"),
+  swing: document.getElementById("swingBtn"),
+  momentum: document.getElementById("momBtn"),
+  mean: document.getElementById("meanBtn")
+};
 
-function toggleWatch(){
-  watchPanel.classList.toggle("open");
-  renderWatchlist();
-  if(watchPanel.classList.contains("open")){
-    startWatchAutoRefresh();
-  } else {
-    stopWatchAutoRefresh();
-  }
+function setStrategy(s){
+  strategy = s;
+  Object.keys(buttons).forEach(k=>{
+    buttons[k].classList.toggle("active", k===s);
+  });
 }
 
-function toggleMovers(){
-  moversPanel.classList.toggle("open");
-  if(moversPanel.classList.contains("open")){
-    loadScanner();
-    startMoversAutoRefresh();
-  } else {
-    stopMoversAutoRefresh();
-  }
-}
-
-function startMoversAutoRefresh(){
-  stopMoversAutoRefresh();
-  moversTimer = setInterval(loadScanner, 60000);
-}
-function stopMoversAutoRefresh(){
-  if(moversTimer){
-    clearInterval(moversTimer);
-    moversTimer = null;
-  }
-}
-
-function getWatchlist(){
-  return JSON.parse(localStorage.getItem("watchlist") || "[]");
-}
-function saveWatchlist(list){
-  localStorage.setItem("watchlist", JSON.stringify(list));
-}
-function addWatch(t){
-  const w = getWatchlist();
-  if(!w.includes(t)){
-    w.push(t);
-    saveWatchlist(w);
-    renderWatchlist();
-  }
-}
-function removeWatch(t){
-  const w = getWatchlist().filter(x=>x!==t);
-  saveWatchlist(w);
-  renderWatchlist();
-}
-
-async function renderWatchlist(){
-  const w = getWatchlist();
-  watchItems.innerHTML = "";
-
-  for(const t of w){
-    const row = document.createElement("div");
-    row.className="watch-item";
-    row.innerHTML = `
-      <span>${t}</span>
-      <span class="watch-meta">…</span>
-    `;
-    row.onclick = ()=> analyze(t);
-
-    const meta = row.querySelector(".watch-meta");
-
-    try{
-      const r = await fetch(`${API}/analyze?ticker=${t}&mode=${mode}`);
-      const d = await r.json();
-      const ch = d.change ?? 0;
-      const bias = (d.bias || "Neutral").toLowerCase();
-
-      row.classList.toggle("uprow", ch > 0);
-      row.classList.toggle("downrow", ch < 0);
-
-      meta.innerHTML = `
-        $${d.price ?? "—"} 
-        <span class="${ch>=0?'up':'down'}">${ch}%</span>
-        <span class="badge ${bias==='bullish'?'bull':bias==='bearish'?'bear':'neutral'}">${d.bias || "Neutral"}</span>
-        <span class="remove">✖</span>
-      `;
-
-      meta.querySelector(".remove").onclick = (e)=>{
-        e.stopPropagation();
-        removeWatch(t);
-      };
-    }catch{
-      meta.textContent = "—";
-    }
-
-    watchItems.appendChild(row);
-  }
-}
-
-function startWatchAutoRefresh(){
-  stopWatchAutoRefresh();
-  watchTimer = setInterval(renderWatchlist, 45000);
-}
-function stopWatchAutoRefresh(){
-  if(watchTimer){
-    clearInterval(watchTimer);
-    watchTimer = null;
-  }
-}
-
-async function refreshAll(){
-  await renderWatchlist();
-}
-
-function setMode(m){
-  mode = m;
-  dayBtn.classList.toggle("active", m==="day");
-  swingBtn.classList.toggle("active", m==="swing");
-}
+buttons.scalp.onclick = ()=> setStrategy("scalp");
+buttons.day.onclick = ()=> setStrategy("day");
+buttons.swing.onclick = ()=> setStrategy("swing");
+buttons.momentum.onclick = ()=> setStrategy("momentum");
+buttons.mean.onclick = ()=> setStrategy("mean");
 
 async function analyze(sym){
-  const ticker = (sym || tickerInput.value.trim()).toUpperCase();
+  const ticker = (sym || document.getElementById("tickerInput").value.trim()).toUpperCase();
   if(!ticker) return;
 
-  statusEl.textContent = "Analyzing…";
-  resultEl.innerHTML = "";
+  document.getElementById("status").textContent = "Analyzing…";
+  document.getElementById("result").innerHTML = "";
 
-  const r = await fetch(`${API}/analyze?ticker=${ticker}&mode=${mode}`);
+  const r = await fetch(`${API}/analyze?ticker=${ticker}&strategy=${strategy}`);
   const d = await r.json();
 
-  const levels = d.levels || {};
-  const plan = d.plan || {};
-  const targets = Array.isArray(plan.targets) ? plan.targets : [];
-  const risks = Array.isArray(d.risk_notes) ? d.risk_notes : [];
-
-  resultEl.innerHTML = `
+  document.getElementById("result").innerHTML = `
     <div class="card">
       <div class="ticker">
         ${d.ticker}
         <span class="price">$${d.price ?? ""}</span>
       </div>
-
       <button onclick="addWatch('${d.ticker}')">⭐ Add to Watchlist</button>
-
-      <div class="summary">
-        <strong>Bias:</strong> ${d.bias || "Neutral"}<br/>
-        <strong>Trend:</strong> ${d.trend || "—"}<br/><br/>
-
-        <strong>Key Levels</strong><br/>
-        Support: ${levels.support || "—"}<br/>
-        Resistance: ${levels.resistance || "—"}<br/><br/>
-
-        <strong>Trade Plan</strong><br/>
-        Entry: ${plan.entry || "—"}<br/>
-        Stop: ${plan.stop || "—"}<br/>
-        ${targets.length ? `<ul>${targets.map(t=>`<li>${t}</li>`).join("")}</ul>` : ""}
-        ${risks.length ? `<ul>${risks.map(r=>`<li>${r}</li>`).join("")}</ul>` : ""}
-
-        <br/>${d.summary || ""}
-      </div>
+      <div class="summary">${d.summary || ""}</div>
     </div>
   `;
 
-  statusEl.textContent = "";
+  document.getElementById("status").textContent = "";
 }
-
-async function loadScanner(){
-  moversEl.innerHTML = "Scanning…";
-  try{
-    const r = await fetch(`${API}/scanner`);
-    const d = await r.json();
-    const list = d.results || [];
-
-    moversEl.innerHTML = "";
-    list.forEach(x=>{
-      const p = document.createElement("div");
-      p.className = "pill";
-      p.innerHTML = `${x.ticker} <span class="${x.change>=0?'up':'down'}">${x.change}%</span>`;
-      p.onclick = ()=> analyze(x.ticker);
-      moversEl.appendChild(p);
-    });
-  }catch{
-    moversEl.innerHTML = "Scanner offline.";
-  }
-}
-
-analyzeBtn.onclick = ()=> analyze();
-dayBtn.onclick = ()=> setMode("day");
-swingBtn.onclick = ()=> setMode("swing");
-
-renderWatchlist();
 </script>
 </body>
 </html>
