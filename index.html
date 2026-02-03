@@ -199,20 +199,6 @@ const modeCopy = {
   mean: "Fade extremes. Reversion to equilibrium."
 };
 
-/* 🔵 INSERTED — backend-aware banner support */
-function getModeBanner(d){
-  if(d.mode_banner){
-    return d.mode_banner;
-  }
-  return `${strategy.toUpperCase()} — ${modeCopy[strategy]}`;
-}
-
-/* 🔵 INSERTED — safe risk rendering */
-function renderRisks(risks){
-  if(!risks || !risks.length) return "";
-  return risks.map(x => `• ${x}`).join("<br/>") + "<br/><br/>";
-}
-
 function setStrategy(s){
   strategy = s;
   Object.keys(buttons).forEach(k=>{
@@ -227,7 +213,107 @@ buttons.swing.onclick = ()=> setStrategy("swing");
 buttons.momentum.onclick = ()=> setStrategy("momentum");
 buttons.mean.onclick = ()=> setStrategy("mean");
 
-/* ---- everything below remains unchanged ---- */
+function toggleWatch(){
+  const p = document.getElementById("watchPanel");
+  p.classList.toggle("open");
+  renderWatchlist();
+  if(p.classList.contains("open")){
+    startWatchAutoRefresh();
+  } else {
+    stopWatchAutoRefresh();
+  }
+}
+
+function toggleMovers(){
+  const p = document.getElementById("moversPanel");
+  p.classList.toggle("open");
+  if(p.classList.contains("open")){
+    loadScanner();
+    startMoversAutoRefresh();
+  } else {
+    stopMoversAutoRefresh();
+  }
+}
+
+function startWatchAutoRefresh(){
+  stopWatchAutoRefresh();
+  watchTimer = setInterval(renderWatchlist, 45000);
+}
+function stopWatchAutoRefresh(){
+  if(watchTimer){
+    clearInterval(watchTimer);
+    watchTimer = null;
+  }
+}
+
+function startMoversAutoRefresh(){
+  stopMoversAutoRefresh();
+  moversTimer = setInterval(loadScanner, 60000);
+}
+function stopMoversAutoRefresh(){
+  if(moversTimer){
+    clearInterval(moversTimer);
+    moversTimer = null;
+  }
+}
+
+function getWatchlist(){
+  return JSON.parse(localStorage.getItem("watchlist") || "[]");
+}
+function saveWatchlist(list){
+  localStorage.setItem("watchlist", JSON.stringify(list));
+}
+function addWatch(t){
+  const w = getWatchlist();
+  if(!w.includes(t)){
+    w.push(t);
+    saveWatchlist(w);
+    renderWatchlist();
+  }
+}
+function removeWatch(t){
+  const w = getWatchlist().filter(x=>x!==t);
+  saveWatchlist(w);
+  renderWatchlist();
+}
+
+async function renderWatchlist(){
+  const w = getWatchlist();
+  const el = document.getElementById("watchItems");
+  el.innerHTML = "";
+
+  for(const t of w){
+    const row = document.createElement("div");
+    row.className="watch-item";
+    row.innerHTML = `<span>${t}</span><span class="watch-meta">…</span>`;
+    row.onclick = ()=> analyze(t);
+    const meta = row.querySelector(".watch-meta");
+
+    try{
+      const r = await fetch(`${API}/analyze?ticker=${t}&strategy=${strategy}`);
+      const d = await r.json();
+      const ch = d.change ?? 0;
+      const bias = (d.bias || "Neutral").toLowerCase();
+
+      row.classList.toggle("uprow", ch>0);
+      row.classList.toggle("downrow", ch<0);
+
+      meta.innerHTML = `
+        $${d.price ?? "—"}
+        <span class="${ch>=0?'up':'down'}">${ch}%</span>
+        <span class="badge ${bias==='bullish'?'bull':bias==='bearish'?'bear':'neutral'}">${d.bias||"Neutral"}</span>
+        <span class="remove">✖</span>
+      `;
+      meta.querySelector(".remove").onclick = e=>{
+        e.stopPropagation();
+        removeWatch(t);
+      };
+    }catch{
+      meta.textContent="—";
+    }
+    el.appendChild(row);
+  }
+}
 
 async function analyze(sym){
   const ticker = (sym || document.getElementById("tickerInput").value.trim()).toUpperCase();
@@ -252,7 +338,7 @@ async function analyze(sym){
         <span class="price">$${d.price ?? ""}</span>
       </div>
 
-      <div class="mode-banner">${getModeBanner(d)}</div>
+      <div class="mode-banner">${strategy.toUpperCase()} — ${modeCopy[strategy]}</div>
 
       <button onclick="addWatch('${d.ticker}')">⭐ Add to Watchlist</button>
 
@@ -269,7 +355,7 @@ async function analyze(sym){
         Stop: ${plan.stop || "—"}<br/>
         Targets: ${targets.join(", ")}<br/><br/>
 
-        ${renderRisks(risks)}
+        ${risks.map(x => `• ${x}`).join("<br/>")}<br/><br/>
         ${d.summary || ""}
       </div>
     </div>
@@ -277,7 +363,28 @@ async function analyze(sym){
   document.getElementById("status").textContent = "";
 }
 
-/* boot */
+async function loadScanner(){
+  const el = document.getElementById("movers");
+  el.innerHTML="Scanning…";
+  try{
+    const r = await fetch(`${API}/scanner`);
+    const d = await r.json();
+    el.innerHTML="";
+    (d.results||[]).forEach(x=>{
+      const p=document.createElement("div");
+      p.className="pill";
+      p.innerHTML=`${x.ticker} <span class="${x.change>=0?'up':'down'}">${x.change}%</span>`;
+      p.onclick=()=>analyze(x.ticker);
+      el.appendChild(p);
+    });
+  }catch{
+    el.textContent="Scanner offline.";
+  }
+}
+
+document.getElementById("analyzeBtn").onclick = ()=> analyze();
+
+// boot
 renderWatchlist();
 </script>
 </body>
